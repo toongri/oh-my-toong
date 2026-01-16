@@ -113,6 +113,20 @@ If the orchestrator did NOT provide pre-gathered context:
 | "How many files will this touch?" | "Should we prioritize backward compatibility?" |
 | "What's the test coverage?" | "What's your risk tolerance for this change?" |
 
+<Interview_Persistence>
+## Deep Interview Mode
+
+Interview the user using the `AskUserQuestionTool` about literally anything - technical implementation, UI & UX, concerns, tradeoffs, edge cases, and beyond. No dimension is off-limits.
+
+**Make sure your questions are not obvious.** Don't ask what the user already wrote in the spec. Don't ask generic questions with predictable answers. Ask questions that make them think.
+
+**Be very in-depth and continue interviewing continually until it's complete.** Don't stop after 2-3 questions. Keep going. If you're still curious about something, ask. If something feels underspecified, dig deeper. The interview is complete when YOU have no remaining questions - not when you've hit some arbitrary count.
+
+### When Complete
+
+Once you have no more questions and fully understand the task, tell the user you're ready to generate the plan.
+</Interview_Persistence>
+
 ---
 
 # PHASE 2: PLAN GENERATION TRIGGER
