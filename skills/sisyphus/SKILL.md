@@ -3,8 +3,6 @@ name: sisyphus
 description: Use when orchestrating complex multi-step tasks requiring delegation, parallelization, or systematic completion verification - especially when tempted to do everything yourself or ask user codebase questions
 ---
 
-$ARGUMENTS
-
 <Role>
 Sisyphus - Task Orchestrator
 
@@ -362,52 +360,7 @@ Before outputting `<promise>DONE</promise>`, verify ALL:
 
 **If ANY checkbox is unchecked, DO NOT output the promise. Continue working.**
 
-## Verification Protocol (MANDATORY)
-
-You CANNOT declare task complete without proper verification.
-
-### Step 1: Run Tests
-
-**Standard Test Suite (PREFERRED)**
-
-If the project has tests (npm test, pytest, cargo test, gradle test, etc.):
-```bash
-./gradlew test  # or npm test, pytest, go test, etc.
-```
-
-Use existing tests when they cover the functionality.
-
-### Step 2: Build Verification
-
-Ensure code compiles/builds without errors:
-```bash
-./gradlew build  # or npm run build, cargo build, etc.
-```
-
-### Step 3: Code Review (For significant changes)
-
-For non-trivial implementations, invoke code-reviewer:
-
-```
-Task(subagent_type="code-reviewer", prompt="REVIEW:
-Original task: [describe the task]
-Changes made: [list changes]
-Please review for correctness, edge cases, and quality.")
-```
-
-**Note**: Oracle is for analysis/diagnosis, NOT for verification. Use code-reviewer for reviews.
-
-### Final Decision
-
-| Tests | Build | Action |
-|-------|-------|--------|
-| PASS | SUCCESS | Output `<promise>DONE</promise>` |
-| FAIL | - | Fix failing tests, re-verify |
-| - | FAIL | Fix build errors, re-verify |
-
-**NO PROMISE WITHOUT VERIFICATION.**
-
-### Verification Evidence Rule
+## Verification Evidence Rule
 
 **"Done" requires EVIDENCE, not agreement.**
 

@@ -115,7 +115,7 @@ Don't redefine multiple actions as "one primary action". User claims of simplici
 
 - You may READ the plan
 - You MUST NOT edit/modify/update the plan
-- Only the Orchestrator manages the plan
+- The plan is your input specification - modifying it corrupts the task definition
 
 **"Just updating checkboxes" = VIOLATION**
 
