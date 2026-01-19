@@ -1,0 +1,30 @@
+name: "oh-my-toong"
+path: "/Users/toongri/IdeaProjects/oh-my-toong"
+agents:
+  - name: "explore"
+  - name: "librarian"
+  - name: "metis"
+  - name: "momus"
+  - name: "oracle"
+  - name: "prometheus"
+  - name: "sisyphus-junior"
+
+commands:
+  - name: "prometheus"
+  - name: "sisyphus"
+
+hooks:
+  - name: "keyword-detector"
+  - name: "persistent-mode"
+  - name: "post-tool-verifier"
+  - name: "pre-tool-enforcer"
+  - name: "session-start"
+
+skills:
+  - name: "explore"
+  - name: "librarian"
+  - name: "metis"
+  - name: "momus"
+  - name: "oracle"
+  - name: "prometheus"
+  - name: "sisyphus"

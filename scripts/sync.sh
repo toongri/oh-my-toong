@@ -71,6 +71,19 @@ check_dependencies() {
 # 백업 함수
 # =============================================================================
 
+# 백업 세션 ID 생성 (전체 동기화당 하나)
+generate_backup_session_id() {
+    local timestamp=$(date +%Y%m%d_%H%M%S)
+    local rand=$(head -c 2 /dev/urandom | xxd -p)
+    echo "${timestamp}_${rand}"
+}
+
+# 현재 백업 세션 ID (main에서 설정)
+CURRENT_BACKUP_SESSION=""
+
+# 현재 프로젝트 이름 (process_yaml에서 설정, 루트면 빈 문자열)
+CURRENT_PROJECT_NAME=""
+
 backup_category() {
     local target_path="$1"
     local category="$2"
@@ -80,16 +93,23 @@ backup_category() {
         return 0
     fi
 
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-    local backup_dir="$target_path/.claude/.bak"
-    local backup_path="$backup_dir/${category}.${timestamp}"
+    # scripts/.bak에 중앙 집중식 백업
+    local backup_base="$ROOT_DIR/scripts/.bak/$CURRENT_BACKUP_SESSION"
+    local backup_path
+    if [[ -z "$CURRENT_PROJECT_NAME" ]]; then
+        # 루트 yaml
+        backup_path="$backup_base/$category"
+    else
+        # projects/ yaml
+        backup_path="$backup_base/projects/$CURRENT_PROJECT_NAME/$category"
+    fi
 
     if [[ "$DRY_RUN" == true ]]; then
         log_dry "백업: $source_dir -> $backup_path"
         return 0
     fi
 
-    mkdir -p "$backup_dir"
+    mkdir -p "$(dirname "$backup_path")"
     cp -r "$source_dir" "$backup_path"
     log_info "백업 완료: $backup_path"
 }
@@ -315,7 +335,8 @@ update_settings_json() {
     local target_path="$1"
     local hooks_json="$2"
 
-    local settings_file="$target_path/settings.json"
+    # .claude/settings.json에 저장 (Claude Code 스펙)
+    local settings_file="$target_path/.claude/settings.json"
 
     if [[ "$DRY_RUN" == true ]]; then
         log_dry "settings.json 업데이트: $settings_file"
@@ -329,11 +350,11 @@ update_settings_json() {
         current_settings=$(cat "$settings_file")
     fi
 
-    # hooks 섹션만 덮어쓰기
-    local new_settings=$(echo "$current_settings" | jq --argjson hooks "$hooks_json" '.hooks = $hooks')
+    # hooks를 top-level에 직접 merge (Claude Code 스펙: hooks 래퍼 없음)
+    local new_settings=$(echo "$current_settings" | jq --argjson hooks "$hooks_json" '. * $hooks')
 
     echo "$new_settings" | jq '.' > "$settings_file"
-    log_info "settings.json 업데이트 완료"
+    log_info "settings.json 업데이트 완료: $settings_file"
 }
 
 sync_skills() {
@@ -382,6 +403,7 @@ sync_skills() {
 
 process_yaml() {
     local yaml_file="$1"
+    local is_root="$2"  # "true" if root yaml, "false" if projects/ yaml
 
     if [[ ! -f "$yaml_file" ]]; then
         log_warn "YAML 파일 없음: $yaml_file"
@@ -395,9 +417,26 @@ process_yaml() {
         return 0
     fi
 
+    # 프로젝트 이름 결정
+    if [[ "$is_root" == "true" ]]; then
+        CURRENT_PROJECT_NAME=""
+    else
+        # yaml에 name 필드가 있으면 사용, 없으면 디렉토리 이름
+        local yaml_name=$(yq '.name // ""' "$yaml_file")
+        if [[ -n "$yaml_name" && "$yaml_name" != "null" ]]; then
+            CURRENT_PROJECT_NAME="$yaml_name"
+        else
+            # yaml 파일이 있는 디렉토리 이름
+            CURRENT_PROJECT_NAME=$(basename "$(dirname "$yaml_file")")
+        fi
+    fi
+
     log_info "========================================"
     log_info "처리 중: $yaml_file"
     log_info "대상: $target_path"
+    if [[ -n "$CURRENT_PROJECT_NAME" ]]; then
+        log_info "프로젝트: $CURRENT_PROJECT_NAME"
+    fi
     log_info "========================================"
 
     # .claude 디렉토리 생성
@@ -456,6 +495,11 @@ main() {
     # 의존성 확인
     check_dependencies
 
+    # 백업 세션 ID 생성 (전체 동기화당 하나)
+    CURRENT_BACKUP_SESSION=$(generate_backup_session_id)
+    log_info "백업 세션: $CURRENT_BACKUP_SESSION"
+    log_info "백업 위치: $ROOT_DIR/scripts/.bak/$CURRENT_BACKUP_SESSION/"
+
     # 처리된 경로 추적 (projects/ YAML 우선) - Bash 3.2 호환
     local processed_paths=""
 
@@ -465,7 +509,7 @@ main() {
             if [[ -n "$yaml_file" ]]; then
                 local path=$(yq '.path // ""' "$yaml_file")
                 if [[ -n "$path" && "$path" != "null" ]]; then
-                    process_yaml "$yaml_file"
+                    process_yaml "$yaml_file" "false"
                     processed_paths="${processed_paths}|${path}|"
                 fi
             fi
@@ -478,7 +522,7 @@ main() {
         local path=$(yq '.path // ""' "$root_yaml")
         if [[ -n "$path" && "$path" != "null" ]]; then
             if [[ "$processed_paths" != *"|${path}|"* ]]; then
-                process_yaml "$root_yaml"
+                process_yaml "$root_yaml" "true"
             else
                 log_warn "$path는 projects/에서 이미 처리됨, 스킵"
             fi
