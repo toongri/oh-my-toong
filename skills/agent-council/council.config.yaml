@@ -1,0 +1,39 @@
+# Agent Council Configuration
+# Add or remove council members as needed.
+# Note: Missing CLIs will report `missing_cli` at runtime.
+
+council:
+  # Council members configuration
+  # Each member needs:
+  #   - name: identifier for the agent
+  #   - command: CLI command to execute (prompt will be appended)
+  #   - emoji: display emoji (optional)
+  #   - color: ANSI color (RED, GREEN, BLUE, YELLOW, CYAN)
+
+  members:
+    - name: claude
+      command: "claude -p"
+      emoji: "🧠"
+      color: "CYAN"
+
+    - name: codex
+      command: "codex exec"
+      emoji: "🤖"
+      color: "BLUE"
+
+    - name: gemini
+      command: "gemini"
+      emoji: "💎"
+      color: "GREEN"
+
+  # Chairman configuration
+  chairman:
+    # role: auto|claude|codex|gemini|...
+    # - auto: infer from host tool (Claude Code => claude, Codex CLI => codex)
+    role: "auto"
+    description: "Synthesizes all opinions and provides final recommendation"
+
+  # Execution settings
+  settings:
+    timeout: 180                          # Timeout seconds per agent (0 to disable)
+    exclude_chairman_from_members: true   # Avoid calling the chairman as a member

@@ -1,0 +1,56 @@
+# Commit Message Examples
+
+## Example 1: New Feature (Simple)
+
+**Changes**: New Point.kt entity, PointType.kt enum, PointStatus.kt enum
+
+```
+feat: 포인트 도메인 엔티티 및 Enum 추가
+```
+
+## Example 2: New Feature (With Body)
+
+**Changes**: Point entity with pessimistic lock, differs from existing Coupon pattern
+
+```
+feat: 포인트 엔티티 및 상태 전이 로직 구현
+
+- 동시 차감이 빈번하여 비관적 락 적용 (Coupon과 다른 전략)
+- 만료 상태 전이는 배치에서 처리 예정
+```
+
+## Example 3: Bug Fix
+
+**Changes**: Fixed race condition in point deduction
+
+```
+fix: 포인트 차감 시 동시성 제어 오류 수정
+```
+
+## Example 4: Refactor
+
+**Changes**: Extracted validation logic to separate method
+
+```
+refactor: 포인트 유효성 검증 로직 분리
+```
+
+## Example 5: Test
+
+**Changes**: Added unit tests for Point entity
+
+```
+test: 포인트 엔티티 상태 전이 테스트 추가
+```
+
+## Example 6: Multiple Logical Changes
+
+**Situation**: Entity + Repository + Tests all in one milestone
+
+```
+feat: 포인트 저장소 및 조회 기능 구현
+
+- JpaPointRepository 구현
+- 비관적 락 적용 조회 메서드 추가
+- 통합 테스트 작성
+```
