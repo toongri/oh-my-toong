@@ -2,27 +2,27 @@
 # 이 파일에 동기화할 대상과 항목을 정의합니다.
 
 # 프로젝트 이름 (백업 폴더명에 사용, 생략시 디렉토리명 사용)
-# name: "my-project"
+# name: my-project
 
 # 대상 프로젝트 경로 (프로젝트 루트, .claude가 아님)
-# path: "/Users/toongri/AnotherProject"
+# path: /Users/toongri/AnotherProject
 
 # 동기화할 agents (카테고리 전체 덮어쓰기)
 # agents:
-#   - name: "oracle"
+#   - name: oracle
 #     add-skills:
-#       - "explore"
-#   - name: "sisyphus-junior"
+#       - explore
+#   - name: sisyphus-junior
 
 # 동기화할 commands
 # commands:
-#   - name: "prometheus"
+#   - name: prometheus
 
 # 동기화할 hooks (settings.json에도 자동 추가)
 # hooks:
-#   - name: "session-start"
+#   - name: session-start
 
 # 동기화할 skills (디렉토리 전체 복사)
 # skills:
-#   - name: "prometheus"              # 글로벌: skills/prometheus/
-#   - name: "my-project:testing"      # 프로젝트: projects/my-project/skills/testing/
+#   - name: prometheus              # 글로벌: skills/prometheus/
+#   - name: my-project:testing      # 프로젝트: projects/my-project/skills/testing/
