@@ -276,6 +276,14 @@ When invoking prometheus, ALWAYS include pre-gathered context:
 - DO NOT ask codebase questions (already answered above)
 - ONLY ask about: priorities, timeline, scope, constraints, preferences
 ```
+
+## Handling Subagent User Interview Requests
+
+When a subagent responds that it needs user input/interview:
+
+1. Show the questions to the user (via AskUserQuestion or directly)
+2. Collect user responses
+3. Resume the subagent with the answers
 </Broad_Request_Handling>
 
 <Persistence_Protocol>
