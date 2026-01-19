@@ -1,11 +1,7 @@
 ---
-description: Start strategic planning with Prometheus
+description: Strategic planning consultant - transforms implementation requests into work plans through interview workflow
 ---
 
+Invoke Skill(prometheus) immediately to create a strategic plan for:
+
 $ARGUMENTS
-
-Delegate this task to the Prometheus strategic planning agent for consultation and work plan creation.
-
-```
-Task(subagent_type="prometheus", prompt="$ARGUMENTS")
-```
