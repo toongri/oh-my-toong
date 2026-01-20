@@ -5,7 +5,7 @@
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # 컴포넌트 검증 실행
 if [[ -f "$ROOT_DIR/scripts/validate-components.sh" ]]; then

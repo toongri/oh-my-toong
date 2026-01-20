@@ -31,11 +31,11 @@ hooks:
   - component: session-start.sh
     event: SessionStart
     timeout: 10
-  - component: sync-schema-validator.sh
+  - component: oh-my-toong:sync-schema-validator.sh
     event: PostToolUse
     matcher: "Edit(**/sync.yaml)"
     timeout: 30
-  - component: sync-component-validator.sh
+  - component: oh-my-toong:sync-component-validator.sh
     event: Stop
     timeout: 30
 
