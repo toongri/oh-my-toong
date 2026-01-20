@@ -9,20 +9,39 @@
 
 # 동기화할 agents (카테고리 전체 덮어쓰기)
 # agents:
-#   - name: oracle
+#   - component: oracle
 #     add-skills:
 #       - explore
-#   - name: sisyphus-junior
+#   - component: sisyphus-junior
 
 # 동기화할 commands
 # commands:
-#   - name: prometheus
+#   - component: prometheus
 
 # 동기화할 hooks (settings.json에도 자동 추가)
 # hooks:
-#   - name: session-start
+#   # 스크립트 파일 (기본)
+#   - component: session-start.sh
+#     event: SessionStart          # 필수: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop
+#     matcher: "*"                 # 선택, 기본값 "*"
+#     timeout: 10                  # 선택, 기본값 10
+#     # command 생략 시 → .claude/hooks/${component}
+#
+#   # 커스텀 command
+#   - component: validator.py
+#     event: PreToolUse
+#     command: python3 .claude/hooks/${component}
+#
+#   # 인라인 command (파일 복사 없음)
+#   - event: PreToolUse
+#     command: echo "checking..."
+#
+#   # LLM prompt (파일 복사 없음)
+#   - event: Stop
+#     type: prompt
+#     prompt: Verify all tests pass before stopping
 
 # 동기화할 skills (디렉토리 전체 복사)
 # skills:
-#   - name: prometheus              # 글로벌: skills/prometheus/
-#   - name: my-project:testing      # 프로젝트: projects/my-project/skills/testing/
+#   - component: prometheus              # 글로벌: skills/prometheus/
+#   - component: my-project:testing      # 프로젝트: projects/my-project/skills/testing/

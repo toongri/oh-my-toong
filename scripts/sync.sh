@@ -224,11 +224,13 @@ sync_agents() {
     local target_path="$1"
     local yaml_file="$2"
 
-    local count=$(yq '.agents | length // 0' "$yaml_file")
-    if [[ "$count" -eq 0 ]]; then
+    # 필드 자체가 없으면 스킵 (기존 유지)
+    local field_exists=$(yq '.agents' "$yaml_file")
+    if [[ "$field_exists" == "null" ]]; then
         return 0
     fi
 
+    local count=$(yq '.agents | length' "$yaml_file")
     log_info "Agents 동기화 시작 ($count 개)"
 
     # 대상 디렉토리 준비
@@ -242,7 +244,7 @@ sync_agents() {
     fi
 
     for i in $(seq 0 $((count - 1))); do
-        local name=$(yq ".agents[$i].name" "$yaml_file")
+        local name=$(yq ".agents[$i].component" "$yaml_file")
         resolve_source_path "agents" "$name" ".md"
         local source_file="$SOURCE_PATH"
         local target_file="$target_dir/${DISPLAY_NAME}.md"
@@ -278,11 +280,13 @@ sync_commands() {
     local target_path="$1"
     local yaml_file="$2"
 
-    local count=$(yq '.commands | length // 0' "$yaml_file")
-    if [[ "$count" -eq 0 ]]; then
+    # 필드 자체가 없으면 스킵 (기존 유지)
+    local field_exists=$(yq '.commands' "$yaml_file")
+    if [[ "$field_exists" == "null" ]]; then
         return 0
     fi
 
+    local count=$(yq '.commands | length' "$yaml_file")
     log_info "Commands 동기화 시작 ($count 개)"
 
     local target_dir="$target_path/.claude/commands"
@@ -294,7 +298,7 @@ sync_commands() {
     fi
 
     for i in $(seq 0 $((count - 1))); do
-        local name=$(yq ".commands[$i].name" "$yaml_file")
+        local name=$(yq ".commands[$i].component" "$yaml_file")
         resolve_source_path "commands" "$name" ".md"
         local source_file="$SOURCE_PATH"
         local target_file="$target_dir/${DISPLAY_NAME}.md"
@@ -319,11 +323,13 @@ sync_hooks() {
     local target_path="$1"
     local yaml_file="$2"
 
-    local count=$(yq '.hooks | length // 0' "$yaml_file")
-    if [[ "$count" -eq 0 ]]; then
+    # 필드 자체가 없으면 스킵 (기존 유지)
+    local field_exists=$(yq '.hooks' "$yaml_file")
+    if [[ "$field_exists" == "null" ]]; then
         return 0
     fi
 
+    local count=$(yq '.hooks | length' "$yaml_file")
     log_info "Hooks 동기화 시작 ($count 개)"
 
     local target_dir="$target_path/.claude/hooks"
@@ -338,41 +344,74 @@ sync_hooks() {
     local hooks_json="{}"
 
     for i in $(seq 0 $((count - 1))); do
-        local name=$(yq ".hooks[$i].name" "$yaml_file")
-        resolve_source_path "hooks" "$name" ".sh"
-        local source_file="$SOURCE_PATH"
-        local target_file="$target_dir/${DISPLAY_NAME}.sh"
+        # yaml에서 hook 설정 읽기
+        local component=$(yq ".hooks[$i].component // \"\"" "$yaml_file")
+        local hook_event=$(yq ".hooks[$i].event // \"\"" "$yaml_file")
+        local matcher=$(yq ".hooks[$i].matcher // \"*\"" "$yaml_file")
+        local hook_type=$(yq ".hooks[$i].type // \"command\"" "$yaml_file")
+        local timeout=$(yq ".hooks[$i].timeout // 10" "$yaml_file")
+        local custom_command=$(yq ".hooks[$i].command // \"\"" "$yaml_file")
+        local prompt_text=$(yq ".hooks[$i].prompt // \"\"" "$yaml_file")
 
-        if [[ ! -f "$source_file" ]]; then
-            log_warn "Hook 파일 없음: $source_file"
+        if [[ -z "$hook_event" || "$hook_event" == "null" ]]; then
+            log_warn "Hook event가 정의되지 않음 (스킵)"
             continue
         fi
 
-        if [[ "$DRY_RUN" == true ]]; then
-            log_dry "복사: $source_file -> $target_file"
+        # component가 있으면 파일 복사 (확장자 포함)
+        if [[ -n "$component" && "$component" != "null" ]]; then
+            resolve_source_path "hooks" "$component" ""
+            local source_file="$SOURCE_PATH"
+            local target_file="$target_dir/${DISPLAY_NAME}"
+
+            if [[ -f "$source_file" ]]; then
+                if [[ "$DRY_RUN" == true ]]; then
+                    log_dry "복사: $source_file -> $target_file"
+                else
+                    cp "$source_file" "$target_file"
+                    chmod +x "$target_file"
+                    log_info "복사 완료: ${DISPLAY_NAME}"
+                fi
+            else
+                log_warn "Hook 파일 없음: $source_file"
+            fi
+        fi
+
+        # settings.json용 hook entry 구성
+        local hook_entry
+        if [[ "$hook_type" == "prompt" ]]; then
+            # type: prompt → prompt 필드 사용
+            if [[ -z "$prompt_text" || "$prompt_text" == "null" ]]; then
+                log_warn "Hook prompt가 정의되지 않음: event=$hook_event (스킵)"
+                continue
+            fi
+            hook_entry=$(jq -n \
+                --arg matcher "$matcher" \
+                --arg prompt "$prompt_text" \
+                --argjson timeout "$timeout" \
+                '[{"matcher": $matcher, "hooks": [{"type": "prompt", "prompt": $prompt, "timeout": $timeout}]}]')
         else
-            cp "$source_file" "$target_file"
-            chmod +x "$target_file"
-            log_info "복사 완료: ${DISPLAY_NAME}.sh"
+            # type: command → command 필드 사용
+            local cmd_path
+            if [[ -n "$custom_command" && "$custom_command" != "null" ]]; then
+                # 커스텀 command (${component} 치환)
+                cmd_path="${custom_command//\$\{component\}/$DISPLAY_NAME}"
+            elif [[ -n "$component" && "$component" != "null" ]]; then
+                # 기본값: 상대경로
+                cmd_path=".claude/hooks/${DISPLAY_NAME}"
+            else
+                log_warn "Hook command가 정의되지 않음: event=$hook_event (스킵)"
+                continue
+            fi
+            hook_entry=$(jq -n \
+                --arg matcher "$matcher" \
+                --arg cmd "$cmd_path" \
+                --argjson timeout "$timeout" \
+                '[{"matcher": $matcher, "hooks": [{"type": "command", "command": $cmd, "timeout": $timeout}]}]')
         fi
 
-        # Hook name -> Hook Type 매핑 (Bash 3.2 호환, DISPLAY_NAME 사용)
-        local hook_type=""
-        case "$DISPLAY_NAME" in
-            "session-start") hook_type="SessionStart" ;;
-            "keyword-detector") hook_type="UserPromptSubmit" ;;
-            "pre-tool-enforcer") hook_type="PreToolUse" ;;
-            "post-tool-verifier") hook_type="PostToolUse" ;;
-            "persistent-mode") hook_type="Stop" ;;
-        esac
-
-        # settings.json용 hooks 구성
-        if [[ -n "$hook_type" ]]; then
-            local hook_entry=$(jq -n \
-                --arg cmd "~/.claude/hooks/${DISPLAY_NAME}.sh" \
-                '[{"matcher": "*", "hooks": [{"type": "command", "command": $cmd, "timeout": 10}]}]')
-            hooks_json=$(echo "$hooks_json" | jq --arg type "$hook_type" --argjson entry "$hook_entry" '.[$type] = $entry')
-        fi
+        # 같은 event에 여러 hook이 있으면 배열에 추가
+        hooks_json=$(echo "$hooks_json" | jq --arg event "$hook_event" --argjson entry "$hook_entry" '.[$event] = (.[$event] // []) + $entry')
     done
 
     # settings.json 업데이트
@@ -430,11 +469,13 @@ sync_skills() {
     local target_path="$1"
     local yaml_file="$2"
 
-    local count=$(yq '.skills | length // 0' "$yaml_file")
-    if [[ "$count" -eq 0 ]]; then
+    # 필드 자체가 없으면 스킵 (기존 유지)
+    local field_exists=$(yq '.skills' "$yaml_file")
+    if [[ "$field_exists" == "null" ]]; then
         return 0
     fi
 
+    local count=$(yq '.skills | length' "$yaml_file")
     log_info "Skills 동기화 시작 ($count 개)"
 
     local target_dir="$target_path/.claude/skills"
@@ -446,7 +487,7 @@ sync_skills() {
     fi
 
     for i in $(seq 0 $((count - 1))); do
-        local name=$(yq ".skills[$i].name" "$yaml_file")
+        local name=$(yq ".skills[$i].component" "$yaml_file")
         resolve_source_path "skills" "$name" ""
         local source_dir="$SOURCE_PATH"
         local target_skill_dir="$target_dir/${DISPLAY_NAME}"

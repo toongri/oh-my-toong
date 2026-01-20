@@ -1,35 +1,45 @@
 name: oh-my-toong
 path: /Users/toongri/IdeaProjects/oh-my-toong
 agents:
-  - name: explore
-  - name: librarian
-  - name: metis
-  - name: momus
-  - name: oracle
-  - name: prometheus
-  - name: sisyphus-junior
+  - component: explore
+  - component: librarian
+  - component: metis
+  - component: momus
+  - component: oracle
+  - component: prometheus
+  - component: sisyphus-junior
 
 commands:
-  - name: cancel-ralph
-  - name: momus
-  - name: prometheus
-  - name: sisyphus
+  - component: cancel-ralph
+  - component: momus
+  - component: prometheus
+  - component: sisyphus
 
 hooks:
-  - name: keyword-detector
-  - name: persistent-mode
-  - name: post-tool-verifier
-  - name: pre-tool-enforcer
-  - name: session-start
+  - component: keyword-detector.sh
+    event: UserPromptSubmit
+    timeout: 10
+  - component: persistent-mode.sh
+    event: Stop
+    timeout: 15
+  - component: post-tool-verifier.sh
+    event: PostToolUse
+    timeout: 10
+  - component: pre-tool-enforcer.sh
+    event: PreToolUse
+    timeout: 5
+  - component: session-start.sh
+    event: SessionStart
+    timeout: 10
 
 skills:
-  - name: agent-council
-  - name: clarify
-  - name: explore
-  - name: git-commiter
-  - name: librarian
-  - name: metis
-  - name: momus
-  - name: oracle
-  - name: prometheus
-  - name: sisyphus
+  - component: agent-council
+  - component: clarify
+  - component: explore
+  - component: git-committer
+  - component: librarian
+  - component: metis
+  - component: momus
+  - component: oracle
+  - component: prometheus
+  - component: sisyphus
