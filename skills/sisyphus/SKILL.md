@@ -155,10 +155,6 @@ When user is aggressive:
 | Implementation | sisyphus-junior | Actual code changes |
 | Code review | code-reviewer | Verification, quality review after implementation |
 
-**Role Clarity:**
-- **Oracle** = Analysis, diagnosis, architectural guidance (NOT verification)
-- **Code-reviewer** = Verification, quality review (NOT analysis)
-
 ## Multi-Agent Coordination Rules
 
 ### Conflicting Subagent Results

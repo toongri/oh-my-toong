@@ -4,6 +4,7 @@ set -euo pipefail
 # =============================================================================
 # oh-my-toong Sync Tool
 # agents, commands, hooks, skills를 다른 Claude 프로젝트로 동기화
+# Only supports new format (object with items)
 # =============================================================================
 
 # 변수
@@ -11,72 +12,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 DRY_RUN=false
 
-# 색상
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Source common utilities and adapters
+source "${SCRIPT_DIR}/lib/common.sh"
+source "${SCRIPT_DIR}/adapters/claude.sh"
+source "${SCRIPT_DIR}/adapters/gemini.sh"
+source "${SCRIPT_DIR}/adapters/codex.sh"
 
 # =============================================================================
-# 유틸리티 함수
+# 전역 상태 변수 (백업용)
 # =============================================================================
-
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-log_dry() {
-    echo -e "${YELLOW}[DRY-RUN]${NC} $1"
-}
-
-# =============================================================================
-# 의존성 확인
-# =============================================================================
-
-check_dependencies() {
-    local missing=()
-
-    if ! command -v yq &> /dev/null; then
-        missing+=("yq")
-    fi
-
-    if ! command -v jq &> /dev/null; then
-        missing+=("jq")
-    fi
-
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_error "다음 의존성이 필요합니다: ${missing[*]}"
-        echo ""
-        echo "설치 방법:"
-        echo "  brew install yq jq"
-        echo ""
-        exit 1
-    fi
-}
-
-# =============================================================================
-# 백업 함수
-# =============================================================================
-
-# 백업 세션 ID 생성 (전체 동기화당 하나)
-generate_backup_session_id() {
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-    local rand=$(head -c 2 /dev/urandom | xxd -p)
-    echo "${timestamp}_${rand}"
-}
 
 # 현재 백업 세션 ID (main에서 설정)
 CURRENT_BACKUP_SESSION=""
@@ -84,193 +28,141 @@ CURRENT_BACKUP_SESSION=""
 # 현재 프로젝트 이름 (process_yaml에서 설정, 루트면 빈 문자열)
 CURRENT_PROJECT_NAME=""
 
-backup_category() {
-    local target_path="$1"
-    local category="$2"
-    local source_dir="$target_path/.claude/$category"
+# Global variable for get_item_component
+ITEM_IS_OBJECT=false
 
-    if [[ ! -d "$source_dir" ]]; then
-        return 0
-    fi
+# =============================================================================
+# Item Component Helper
+# =============================================================================
 
-    # scripts/.bak에 중앙 집중식 백업
-    local backup_base="$ROOT_DIR/scripts/.bak/$CURRENT_BACKUP_SESSION"
-    local backup_path
-    if [[ -z "$CURRENT_PROJECT_NAME" ]]; then
-        # 루트 yaml
-        backup_path="$backup_base/$category"
+# Get item from items array - handles both string and object format
+# Returns component name, sets ITEM_IS_OBJECT=true if object, false if string
+get_item_component() {
+    local yaml_file="$1"
+    local section="$2"
+    local index="$3"
+
+    local item_type=$(yq ".$section.items[$index] | type" "$yaml_file")
+    if [[ "$item_type" == "!!str" ]]; then
+        ITEM_IS_OBJECT=false
+        yq ".$section.items[$index]" "$yaml_file"
     else
-        # projects/ yaml
-        backup_path="$backup_base/projects/$CURRENT_PROJECT_NAME/$category"
-    fi
-
-    if [[ "$DRY_RUN" == true ]]; then
-        log_dry "백업: $source_dir -> $backup_path"
-        return 0
-    fi
-
-    mkdir -p "$(dirname "$backup_path")"
-    cp -r "$source_dir" "$backup_path"
-    log_info "백업 완료: $backup_path"
-}
-
-# 오래된 백업 정리 (비동기 실행)
-cleanup_old_backups() {
-    local retention_days="$1"
-    local current_session="$2"
-    local backup_dir="$ROOT_DIR/scripts/.bak"
-
-    if [[ ! -d "$backup_dir" ]]; then
-        return 0
-    fi
-
-    if [[ "$retention_days" -eq 0 ]]; then
-        # 0일: 현재 세션만 남기고 전부 삭제
-        for dir in "$backup_dir"/20*; do
-            if [[ -d "$dir" && "$(basename "$dir")" != "$current_session" ]]; then
-                rm -rf "$dir" 2>/dev/null || true
-            fi
-        done
-    else
-        # N일: N일 이내 생존, N일 초과 삭제
-        # -mtime +X는 (X+1)일 이상이므로 (N-1)로 계산
-        local mtime_days=$((retention_days - 1))
-        find "$backup_dir" -maxdepth 1 -type d -name "20*" -mtime +"$mtime_days" -exec rm -rf {} \; 2>/dev/null || true
+        ITEM_IS_OBJECT=true
+        yq ".$section.items[$index].component // \"\"" "$yaml_file"
     fi
 }
 
 # =============================================================================
-# Agent Front Matter 업데이트
+# 동기화 함수들 (Adapter Dispatch)
 # =============================================================================
-
-update_agent_frontmatter() {
-    local agent_file="$1"
-    shift
-    local skills_to_add=("$@")
-
-    if [[ ${#skills_to_add[@]} -eq 0 ]]; then
-        return 0
-    fi
-
-    if [[ "$DRY_RUN" == true ]]; then
-        log_dry "Front matter 업데이트: $agent_file (skills 추가: ${skills_to_add[*]})"
-        return 0
-    fi
-
-    # Front matter 추출 (--- 사이)
-    local has_frontmatter=$(head -1 "$agent_file" | grep -c "^---$" || true)
-    if [[ "$has_frontmatter" -eq 0 ]]; then
-        log_warn "Front matter 없음: $agent_file"
-        return 0
-    fi
-
-    # 임시 파일 생성
-    local temp_file=$(mktemp)
-    local frontmatter_file=$(mktemp)
-    local body_file=$(mktemp)
-
-    # Front matter와 body 분리
-    awk '/^---$/{n++; next} n==1' "$agent_file" > "$frontmatter_file"
-    awk '/^---$/{n++; if(n==2) p=1; next} p' "$agent_file" > "$body_file"
-
-    # skills 배열로 변환하고 새 skills 추가
-    # [.skills] | flatten 을 사용하여 문자열이든 배열이든 모두 배열로 변환
-    local skills_args=""
-    for skill in "${skills_to_add[@]}"; do
-        skills_args="$skills_args + [\"$skill\"]"
-    done
-
-    yq -i ".skills = ([.skills] | flatten)${skills_args} | .skills |= unique" "$frontmatter_file"
-
-    # 파일 재조립
-    echo "---" > "$temp_file"
-    cat "$frontmatter_file" >> "$temp_file"
-    echo "---" >> "$temp_file"
-    cat "$body_file" >> "$temp_file"
-
-    mv "$temp_file" "$agent_file"
-    rm -f "$frontmatter_file" "$body_file"
-
-    log_info "Front matter 업데이트 완료: $agent_file"
-}
-
-# =============================================================================
-# 동기화 함수들
-# =============================================================================
-
-# 소스 경로 해석: "name" 또는 "{project}:{name}" 형식 지원
-# 사용법: resolve_source_path "agents" "oracle" ".md"      → agents/oracle.md
-#         resolve_source_path "skills" "my-proj:testing" "" → projects/my-proj/skills/testing/
-# 결과: SOURCE_PATH, DISPLAY_NAME 전역 변수에 설정
-resolve_source_path() {
-    local category="$1"
-    local name="$2"
-    local extension="$3"
-
-    if [[ "$name" == *:* ]]; then
-        # {project}:{item} 형식 → projects/ 아래에서 찾기
-        local project=$(echo "$name" | cut -d: -f1)
-        local item=$(echo "$name" | cut -d: -f2-)
-        SOURCE_PATH="$ROOT_DIR/projects/$project/$category/${item}${extension}"
-        DISPLAY_NAME="$item"
-    else
-        # 글로벌 경로
-        SOURCE_PATH="$ROOT_DIR/$category/${name}${extension}"
-        DISPLAY_NAME="$name"
-    fi
-}
 
 sync_agents() {
     local target_path="$1"
     local yaml_file="$2"
 
-    # 필드 자체가 없으면 스킵 (기존 유지)
+    # 필드 자체가 없으면 스킵
     local field_exists=$(yq '.agents' "$yaml_file")
     if [[ "$field_exists" == "null" ]]; then
         return 0
     fi
 
-    local count=$(yq '.agents | length' "$yaml_file")
-    log_info "Agents 동기화 시작 ($count 개)"
-
-    # 대상 디렉토리 준비
-    local target_dir="$target_path/.claude/agents"
-
-    if [[ "$DRY_RUN" != true ]]; then
-        # 기존 agents 백업 후 삭제 (PUT 방식)
-        backup_category "$target_path" "agents"
-        rm -rf "$target_dir"
-        mkdir -p "$target_dir"
+    # items 필드 확인
+    local items_exists=$(yq '.agents.items' "$yaml_file")
+    if [[ "$items_exists" == "null" ]]; then
+        log_warn "agents.items가 없음, 스킵"
+        return 0
     fi
 
-    for i in $(seq 0 $((count - 1))); do
-        local name=$(yq ".agents[$i].component" "$yaml_file")
-        resolve_source_path "agents" "$name" ".md"
-        local source_file="$SOURCE_PATH"
-        local target_file="$target_dir/${DISPLAY_NAME}.md"
+    # Get default platforms from config.yaml
+    local default_platforms=$(get_default_platforms)
 
-        if [[ ! -f "$source_file" ]]; then
-            log_warn "Agent 파일 없음: $source_file"
+    # Get top-level platforms
+    local sync_platforms=$(yq -o=json '.platforms // null' "$yaml_file")
+    if [[ "$sync_platforms" == "null" ]]; then
+        sync_platforms="$default_platforms"
+    fi
+
+    # Track which CLIs need directory preparation (Bash 3.2 compatible)
+    local prepared_claude=false
+    local prepared_gemini=false
+    local prepared_codex=false
+
+    # Section-level platforms
+    local section_platforms=$(yq -o=json '.agents.platforms // null' "$yaml_file")
+    if [[ "$section_platforms" == "null" ]]; then
+        section_platforms="$sync_platforms"
+    fi
+
+    local count=$(yq '.agents.items | length // 0' "$yaml_file")
+    log_info "Agents 동기화 시작 ($count 개)"
+
+    for i in $(seq 0 $((count - 1))); do
+        local component
+        component=$(get_item_component "$yaml_file" "agents" "$i")
+
+        # Get add-skills (only for object items)
+        local add_skills=""
+        local item_platforms
+        if [[ "$ITEM_IS_OBJECT" == "true" ]]; then
+            local add_skills_count=$(yq ".agents.items[$i].add-skills | length // 0" "$yaml_file")
+            if [[ "$add_skills_count" -gt 0 ]]; then
+                for j in $(seq 0 $((add_skills_count - 1))); do
+                    local skill=$(yq ".agents.items[$i].add-skills[$j]" "$yaml_file")
+                    if [[ -n "$add_skills" ]]; then
+                        add_skills="$add_skills,$skill"
+                    else
+                        add_skills="$skill"
+                    fi
+                done
+            fi
+
+            # Get item-level platforms
+            item_platforms=$(yq -o=json ".agents.items[$i].platforms // null" "$yaml_file")
+            if [[ "$item_platforms" == "null" ]]; then
+                item_platforms="$section_platforms"
+            fi
+        else
+            # String item - use section platforms
+            item_platforms="$section_platforms"
+        fi
+
+        if [[ -z "$component" || "$component" == "null" ]]; then
             continue
         fi
 
-        if [[ "$DRY_RUN" == true ]]; then
-            log_dry "복사: $source_file -> $target_file"
-        else
-            cp "$source_file" "$target_file"
-            log_info "복사 완료: ${DISPLAY_NAME}.md"
-        fi
+        resolve_source_path "agents" "$component" ".md"
 
-        # add-skills 처리
-        local add_skills_count=$(yq ".agents[$i].add-skills | length // 0" "$yaml_file")
-        if [[ "$add_skills_count" -gt 0 ]]; then
-            local skills_array=()
-            for j in $(seq 0 $((add_skills_count - 1))); do
-                local skill=$(yq ".agents[$i].add-skills[$j]" "$yaml_file")
-                skills_array+=("$skill")
-            done
-            update_agent_frontmatter "$target_file" "${skills_array[@]}"
-        fi
+        # Dispatch to each target adapter
+        for target in $(echo "$item_platforms" | jq -r '.[]'); do
+            case "$target" in
+                claude)
+                    if [[ "$prepared_claude" == false && "$DRY_RUN" != true ]]; then
+                        backup_category "$target_path" "agents"
+                        rm -rf "$target_path/.claude/agents"
+                        mkdir -p "$target_path/.claude/agents"
+                        prepared_claude=true
+                    fi
+                    claude_sync_agents "$target_path" "$component" "$add_skills" "$DRY_RUN" "$ROOT_DIR/agents"
+                    ;;
+                gemini)
+                    if [[ "$prepared_gemini" == false && "$DRY_RUN" != true ]]; then
+                        mkdir -p "$target_path/.gemini"
+                        prepared_gemini=true
+                    fi
+                    gemini_sync_agents "$target_path" "$component" "$add_skills" "$DRY_RUN" "$ROOT_DIR/agents"
+                    ;;
+                codex)
+                    if [[ "$prepared_codex" == false && "$DRY_RUN" != true ]]; then
+                        mkdir -p "$target_path/.codex"
+                        prepared_codex=true
+                    fi
+                    codex_sync_agents "$target_path" "$component" "$add_skills" "$DRY_RUN" "$ROOT_DIR/agents"
+                    ;;
+                *)
+                    log_warn "Unknown target: $target (skipping)"
+                    ;;
+            esac
+        done
     done
 
     log_success "Agents 동기화 완료"
@@ -280,40 +172,93 @@ sync_commands() {
     local target_path="$1"
     local yaml_file="$2"
 
-    # 필드 자체가 없으면 스킵 (기존 유지)
+    # 필드 자체가 없으면 스킵
     local field_exists=$(yq '.commands' "$yaml_file")
     if [[ "$field_exists" == "null" ]]; then
         return 0
     fi
 
-    local count=$(yq '.commands | length' "$yaml_file")
-    log_info "Commands 동기화 시작 ($count 개)"
-
-    local target_dir="$target_path/.claude/commands"
-
-    if [[ "$DRY_RUN" != true ]]; then
-        backup_category "$target_path" "commands"
-        rm -rf "$target_dir"
-        mkdir -p "$target_dir"
+    # items 필드 확인
+    local items_exists=$(yq '.commands.items' "$yaml_file")
+    if [[ "$items_exists" == "null" ]]; then
+        log_warn "commands.items가 없음, 스킵"
+        return 0
     fi
 
-    for i in $(seq 0 $((count - 1))); do
-        local name=$(yq ".commands[$i].component" "$yaml_file")
-        resolve_source_path "commands" "$name" ".md"
-        local source_file="$SOURCE_PATH"
-        local target_file="$target_dir/${DISPLAY_NAME}.md"
+    # Get default platforms from config.yaml
+    local default_platforms=$(get_default_platforms)
 
-        if [[ ! -f "$source_file" ]]; then
-            log_warn "Command 파일 없음: $source_file"
+    # Get top-level platforms
+    local sync_platforms=$(yq -o=json '.platforms // null' "$yaml_file")
+    if [[ "$sync_platforms" == "null" ]]; then
+        sync_platforms="$default_platforms"
+    fi
+
+    # Track which CLIs need directory preparation (Bash 3.2 compatible)
+    local prepared_claude=false
+    local prepared_gemini=false
+    local prepared_codex=false
+
+    # Section-level platforms
+    local section_platforms=$(yq -o=json '.commands.platforms // null' "$yaml_file")
+    if [[ "$section_platforms" == "null" ]]; then
+        section_platforms="$sync_platforms"
+    fi
+
+    local count=$(yq '.commands.items | length // 0' "$yaml_file")
+    log_info "Commands 동기화 시작 ($count 개)"
+
+    for i in $(seq 0 $((count - 1))); do
+        local component
+        component=$(get_item_component "$yaml_file" "commands" "$i")
+
+        local item_platforms
+        if [[ "$ITEM_IS_OBJECT" == "true" ]]; then
+            item_platforms=$(yq -o=json ".commands.items[$i].platforms // null" "$yaml_file")
+            if [[ "$item_platforms" == "null" ]]; then
+                item_platforms="$section_platforms"
+            fi
+        else
+            item_platforms="$section_platforms"
+        fi
+
+        if [[ -z "$component" || "$component" == "null" ]]; then
             continue
         fi
 
-        if [[ "$DRY_RUN" == true ]]; then
-            log_dry "복사: $source_file -> $target_file"
-        else
-            cp "$source_file" "$target_file"
-            log_info "복사 완료: ${DISPLAY_NAME}.md"
-        fi
+        resolve_source_path "commands" "$component" ".md"
+
+        # Dispatch to each target adapter
+        for target in $(echo "$item_platforms" | jq -r '.[]'); do
+            case "$target" in
+                claude)
+                    if [[ "$prepared_claude" == false && "$DRY_RUN" != true ]]; then
+                        backup_category "$target_path" "commands"
+                        rm -rf "$target_path/.claude/commands"
+                        mkdir -p "$target_path/.claude/commands"
+                        prepared_claude=true
+                    fi
+                    claude_sync_commands "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/commands"
+                    ;;
+                gemini)
+                    if [[ "$prepared_gemini" == false && "$DRY_RUN" != true ]]; then
+                        mkdir -p "$target_path/.gemini/extensions"
+                        prepared_gemini=true
+                    fi
+                    gemini_sync_commands "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/commands"
+                    ;;
+                codex)
+                    if [[ "$prepared_codex" == false && "$DRY_RUN" != true ]]; then
+                        mkdir -p "$target_path/.codex"
+                        prepared_codex=true
+                    fi
+                    codex_sync_commands "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/commands"
+                    ;;
+                *)
+                    log_warn "Unknown target: $target (skipping)"
+                    ;;
+            esac
+        done
     done
 
     log_success "Commands 동기화 완료"
@@ -323,186 +268,298 @@ sync_hooks() {
     local target_path="$1"
     local yaml_file="$2"
 
-    # 필드 자체가 없으면 스킵 (기존 유지)
+    # 필드 자체가 없으면 스킵
     local field_exists=$(yq '.hooks' "$yaml_file")
     if [[ "$field_exists" == "null" ]]; then
         return 0
     fi
 
-    local count=$(yq '.hooks | length' "$yaml_file")
-    log_info "Hooks 동기화 시작 ($count 개)"
-
-    local target_dir="$target_path/.claude/hooks"
-
-    if [[ "$DRY_RUN" != true ]]; then
-        backup_category "$target_path" "hooks"
-        rm -rf "$target_dir"
-        mkdir -p "$target_dir"
-    fi
-
-    # hooks JSON 구성
-    local hooks_json="{}"
-
-    for i in $(seq 0 $((count - 1))); do
-        # yaml에서 hook 설정 읽기
-        local component=$(yq ".hooks[$i].component // \"\"" "$yaml_file")
-        local hook_event=$(yq ".hooks[$i].event // \"\"" "$yaml_file")
-        local matcher=$(yq ".hooks[$i].matcher // \"*\"" "$yaml_file")
-        local hook_type=$(yq ".hooks[$i].type // \"command\"" "$yaml_file")
-        local timeout=$(yq ".hooks[$i].timeout // 10" "$yaml_file")
-        local custom_command=$(yq ".hooks[$i].command // \"\"" "$yaml_file")
-        local prompt_text=$(yq ".hooks[$i].prompt // \"\"" "$yaml_file")
-
-        if [[ -z "$hook_event" || "$hook_event" == "null" ]]; then
-            log_warn "Hook event가 정의되지 않음 (스킵)"
-            continue
-        fi
-
-        # component가 있으면 파일 복사 (확장자 포함)
-        if [[ -n "$component" && "$component" != "null" ]]; then
-            resolve_source_path "hooks" "$component" ""
-            local source_file="$SOURCE_PATH"
-            local target_file="$target_dir/${DISPLAY_NAME}"
-
-            if [[ -f "$source_file" ]]; then
-                if [[ "$DRY_RUN" == true ]]; then
-                    log_dry "복사: $source_file -> $target_file"
-                else
-                    cp "$source_file" "$target_file"
-                    chmod +x "$target_file"
-                    log_info "복사 완료: ${DISPLAY_NAME}"
-                fi
-            else
-                log_warn "Hook 파일 없음: $source_file"
-            fi
-        fi
-
-        # settings.json용 hook entry 구성
-        local hook_entry
-        if [[ "$hook_type" == "prompt" ]]; then
-            # type: prompt → prompt 필드 사용
-            if [[ -z "$prompt_text" || "$prompt_text" == "null" ]]; then
-                log_warn "Hook prompt가 정의되지 않음: event=$hook_event (스킵)"
-                continue
-            fi
-            hook_entry=$(jq -n \
-                --arg matcher "$matcher" \
-                --arg prompt "$prompt_text" \
-                --argjson timeout "$timeout" \
-                '[{"matcher": $matcher, "hooks": [{"type": "prompt", "prompt": $prompt, "timeout": $timeout}]}]')
-        else
-            # type: command → command 필드 사용
-            local cmd_path
-            if [[ -n "$custom_command" && "$custom_command" != "null" ]]; then
-                # 커스텀 command (${component} 치환)
-                cmd_path="${custom_command//\$\{component\}/$DISPLAY_NAME}"
-            elif [[ -n "$component" && "$component" != "null" ]]; then
-                # 기본값: 상대경로
-                cmd_path=".claude/hooks/${DISPLAY_NAME}"
-            else
-                log_warn "Hook command가 정의되지 않음: event=$hook_event (스킵)"
-                continue
-            fi
-            hook_entry=$(jq -n \
-                --arg matcher "$matcher" \
-                --arg cmd "$cmd_path" \
-                --argjson timeout "$timeout" \
-                '[{"matcher": $matcher, "hooks": [{"type": "command", "command": $cmd, "timeout": $timeout}]}]')
-        fi
-
-        # 같은 event에 여러 hook이 있으면 배열에 추가
-        hooks_json=$(echo "$hooks_json" | jq --arg event "$hook_event" --argjson entry "$hook_entry" '.[$event] = (.[$event] // []) + $entry')
-    done
-
-    # settings.json 업데이트
-    update_settings_json "$target_path" "$hooks_json"
-
-    log_success "Hooks 동기화 완료"
-}
-
-update_settings_json() {
-    local target_path="$1"
-    local hooks_json="$2"
-
-    # .claude/settings.json에 저장 (Claude Code 스펙)
-    local settings_file="$target_path/.claude/settings.json"
-
-    # 기존 settings.json 백업
-    if [[ -f "$settings_file" ]]; then
-        local backup_base="$ROOT_DIR/scripts/.bak/$CURRENT_BACKUP_SESSION"
-        local backup_path
-        if [[ -z "$CURRENT_PROJECT_NAME" ]]; then
-            backup_path="$backup_base/settings.json"
-        else
-            backup_path="$backup_base/projects/$CURRENT_PROJECT_NAME/settings.json"
-        fi
-
-        if [[ "$DRY_RUN" == true ]]; then
-            log_dry "백업: $settings_file -> $backup_path"
-        else
-            mkdir -p "$(dirname "$backup_path")"
-            cp "$settings_file" "$backup_path"
-            log_info "백업 완료: $backup_path"
-        fi
-    fi
-
-    if [[ "$DRY_RUN" == true ]]; then
-        log_dry "settings.json 업데이트: $settings_file"
-        log_dry "새 hooks: $hooks_json"
+    # items 필드 확인
+    local items_exists=$(yq '.hooks.items' "$yaml_file")
+    if [[ "$items_exists" == "null" ]]; then
+        log_warn "hooks.items가 없음, 스킵"
         return 0
     fi
 
-    # 기존 settings.json 읽기 (없으면 빈 객체)
-    local current_settings="{}"
-    if [[ -f "$settings_file" ]]; then
-        current_settings=$(cat "$settings_file")
+    # Get default platforms from config.yaml
+    local default_platforms=$(get_default_platforms)
+
+    # Get top-level platforms
+    local sync_platforms=$(yq -o=json '.platforms // null' "$yaml_file")
+    if [[ "$sync_platforms" == "null" ]]; then
+        sync_platforms="$default_platforms"
     fi
 
-    # hooks를 top-level에 직접 merge (Claude Code 스펙: hooks 래퍼 없음)
-    local new_settings=$(echo "$current_settings" | jq --argjson hooks "$hooks_json" '. * $hooks')
+    # Track which CLIs need directory preparation and have hooks (Bash 3.2 compatible)
+    local prepared_claude=false
+    local prepared_gemini=false
+    local prepared_codex=false
+    local has_claude_hooks=false
+    local has_gemini_hooks=false
+    local has_codex_hooks=false
 
-    echo "$new_settings" | jq '.' > "$settings_file"
-    log_info "settings.json 업데이트 완료: $settings_file"
+    # Per-CLI hooks JSON (for settings files)
+    local claude_hooks_json="{}"
+    local gemini_hooks_json="{}"
+    local codex_hooks_json="{}"
+
+    # Helper function to process a single hook
+    process_hook() {
+        local hook_path_prefix="$1"  # e.g., ".hooks.items[$i]"
+        local effective_platforms="$2"
+
+        local component=$(yq "$hook_path_prefix.component // \"\"" "$yaml_file")
+        local hook_event=$(yq "$hook_path_prefix.event // \"\"" "$yaml_file")
+        local matcher=$(yq "$hook_path_prefix.matcher // \"*\"" "$yaml_file")
+        local hook_type=$(yq "$hook_path_prefix.type // \"command\"" "$yaml_file")
+        local timeout=$(yq "$hook_path_prefix.timeout // 10" "$yaml_file")
+        local custom_command=$(yq "$hook_path_prefix.command // \"\"" "$yaml_file")
+        local prompt_text=$(yq "$hook_path_prefix.prompt // \"\"" "$yaml_file")
+
+        if [[ -z "$hook_event" || "$hook_event" == "null" ]]; then
+            log_warn "Hook event가 정의되지 않음 (스킵)"
+            return 0
+        fi
+
+        # Get item-level platforms if present
+        local item_platforms=$(yq -o=json "$hook_path_prefix.platforms // null" "$yaml_file")
+        if [[ "$item_platforms" == "null" ]]; then
+            item_platforms="$effective_platforms"
+        fi
+
+        # Resolve display_name if component exists
+        local display_name=""
+        if [[ -n "$component" && "$component" != "null" ]]; then
+            resolve_source_path "hooks" "$component" ""
+            display_name="$DISPLAY_NAME"
+        fi
+
+        # Dispatch to each target adapter
+        for target in $(echo "$item_platforms" | jq -r '.[]'); do
+            case "$target" in
+                claude)
+                    if [[ "$prepared_claude" == false && "$DRY_RUN" != true ]]; then
+                        backup_category "$target_path" "hooks"
+                        rm -rf "$target_path/.claude/hooks"
+                        mkdir -p "$target_path/.claude/hooks"
+                        prepared_claude=true
+                    fi
+
+                    if [[ -n "$component" && "$component" != "null" ]]; then
+                        claude_sync_hooks "$target_path" "$component" "$hook_event" "$matcher" "$timeout" "$hook_type" "$custom_command" "$prompt_text" "$DRY_RUN" "$ROOT_DIR/hooks"
+                    fi
+
+                    local hook_entry
+                    if [[ "$hook_type" == "prompt" ]]; then
+                        if [[ -z "$prompt_text" || "$prompt_text" == "null" ]]; then
+                            log_warn "Hook prompt가 정의되지 않음: event=$hook_event (스킵)"
+                            continue
+                        fi
+                        hook_entry=$(claude_build_hook_entry "$hook_event" "$matcher" "prompt" "$timeout" "$prompt_text" "$display_name")
+                    else
+                        local cmd_path
+                        if [[ -n "$custom_command" && "$custom_command" != "null" ]]; then
+                            cmd_path="$custom_command"
+                        elif [[ -n "$component" && "$component" != "null" ]]; then
+                            cmd_path=".claude/hooks/${display_name}"
+                        else
+                            log_warn "Hook command가 정의되지 않음: event=$hook_event (스킵)"
+                            continue
+                        fi
+                        hook_entry=$(claude_build_hook_entry "$hook_event" "$matcher" "command" "$timeout" "$cmd_path" "$display_name")
+                    fi
+
+                    claude_hooks_json=$(echo "$claude_hooks_json" | jq --arg event "$hook_event" --argjson entry "$hook_entry" '.[$event] = (.[$event] // []) + $entry')
+                    has_claude_hooks=true
+                    ;;
+                gemini)
+                    if [[ "$prepared_gemini" == false && "$DRY_RUN" != true ]]; then
+                        mkdir -p "$target_path/.gemini/hooks"
+                        prepared_gemini=true
+                    fi
+
+                    if [[ -n "$component" && "$component" != "null" ]]; then
+                        gemini_sync_hooks "$target_path" "$component" "$hook_event" "$matcher" "$timeout" "$hook_type" "$custom_command" "$prompt_text" "$DRY_RUN" "$ROOT_DIR/hooks"
+                    fi
+
+                    local gemini_hook_entry
+                    if [[ "$hook_type" == "prompt" ]]; then
+                        if [[ -z "$prompt_text" || "$prompt_text" == "null" ]]; then
+                            continue
+                        fi
+                        gemini_hook_entry=$(gemini_build_hook_entry "$hook_event" "$matcher" "prompt" "$timeout" "$prompt_text" "$display_name")
+                    else
+                        local cmd_path
+                        if [[ -n "$custom_command" && "$custom_command" != "null" ]]; then
+                            cmd_path="$custom_command"
+                        elif [[ -n "$component" && "$component" != "null" ]]; then
+                            cmd_path=".gemini/hooks/${display_name}"
+                        else
+                            continue
+                        fi
+                        gemini_hook_entry=$(gemini_build_hook_entry "$hook_event" "$matcher" "command" "$timeout" "$cmd_path" "$display_name")
+                    fi
+
+                    gemini_hooks_json=$(echo "$gemini_hooks_json" | jq --arg event "$hook_event" --argjson entry "$gemini_hook_entry" '.[$event] = (.[$event] // []) + $entry')
+                    has_gemini_hooks=true
+                    ;;
+                codex)
+                    if [[ "$prepared_codex" == false && "$DRY_RUN" != true ]]; then
+                        mkdir -p "$target_path/.codex/hooks"
+                        prepared_codex=true
+                    fi
+
+                    if [[ -n "$component" && "$component" != "null" ]]; then
+                        codex_sync_hooks "$target_path" "$component" "$hook_event" "$matcher" "$timeout" "$hook_type" "$custom_command" "$prompt_text" "$DRY_RUN" "$ROOT_DIR/hooks"
+                    fi
+
+                    codex_hooks_json=$(echo "$codex_hooks_json" | jq --arg event "$hook_event" '. + {($event): true}')
+                    has_codex_hooks=true
+                    ;;
+                *)
+                    log_warn "Unknown target: $target (skipping)"
+                    ;;
+            esac
+        done
+    }
+
+    # Section-level platforms
+    local section_platforms=$(yq -o=json '.hooks.platforms // null' "$yaml_file")
+    if [[ "$section_platforms" == "null" ]]; then
+        section_platforms="$sync_platforms"
+    fi
+
+    local count=$(yq '.hooks.items | length // 0' "$yaml_file")
+    log_info "Hooks 동기화 시작 ($count 개)"
+
+    for i in $(seq 0 $((count - 1))); do
+        process_hook ".hooks.items[$i]" "$section_platforms"
+    done
+
+    # Backup and update settings for each CLI that has hooks
+    if [[ "$has_claude_hooks" == true ]]; then
+        local settings_file="$target_path/.claude/settings.json"
+        if [[ -f "$settings_file" ]]; then
+            local backup_base="$ROOT_DIR/scripts/.bak/$CURRENT_BACKUP_SESSION"
+            local backup_path
+            if [[ -z "$CURRENT_PROJECT_NAME" ]]; then
+                backup_path="$backup_base/settings.json"
+            else
+                backup_path="$backup_base/projects/$CURRENT_PROJECT_NAME/settings.json"
+            fi
+
+            if [[ "$DRY_RUN" == true ]]; then
+                log_dry "백업: $settings_file -> $backup_path"
+            else
+                mkdir -p "$(dirname "$backup_path")"
+                cp "$settings_file" "$backup_path"
+                log_info "백업 완료: $backup_path"
+            fi
+        fi
+        claude_update_settings "$target_path" "$claude_hooks_json" "$DRY_RUN"
+    fi
+
+    if [[ "$has_gemini_hooks" == true ]]; then
+        gemini_update_settings "$target_path" "$gemini_hooks_json" "$DRY_RUN"
+    fi
+
+    if [[ "$has_codex_hooks" == true ]]; then
+        codex_update_settings "$target_path" "$codex_hooks_json" "$DRY_RUN"
+    fi
+
+    log_success "Hooks 동기화 완료"
 }
 
 sync_skills() {
     local target_path="$1"
     local yaml_file="$2"
 
-    # 필드 자체가 없으면 스킵 (기존 유지)
+    # 필드 자체가 없으면 스킵
     local field_exists=$(yq '.skills' "$yaml_file")
     if [[ "$field_exists" == "null" ]]; then
         return 0
     fi
 
-    local count=$(yq '.skills | length' "$yaml_file")
-    log_info "Skills 동기화 시작 ($count 개)"
-
-    local target_dir="$target_path/.claude/skills"
-
-    if [[ "$DRY_RUN" != true ]]; then
-        backup_category "$target_path" "skills"
-        rm -rf "$target_dir"
-        mkdir -p "$target_dir"
+    # items 필드 확인
+    local items_exists=$(yq '.skills.items' "$yaml_file")
+    if [[ "$items_exists" == "null" ]]; then
+        log_warn "skills.items가 없음, 스킵"
+        return 0
     fi
 
-    for i in $(seq 0 $((count - 1))); do
-        local name=$(yq ".skills[$i].component" "$yaml_file")
-        resolve_source_path "skills" "$name" ""
-        local source_dir="$SOURCE_PATH"
-        local target_skill_dir="$target_dir/${DISPLAY_NAME}"
+    # Get default platforms from config.yaml
+    local default_platforms=$(get_default_platforms)
 
-        if [[ ! -d "$source_dir" ]]; then
-            log_warn "Skill 디렉토리 없음: $source_dir"
+    # Get top-level platforms
+    local sync_platforms=$(yq -o=json '.platforms // null' "$yaml_file")
+    if [[ "$sync_platforms" == "null" ]]; then
+        sync_platforms="$default_platforms"
+    fi
+
+    # Track which CLIs need directory preparation (Bash 3.2 compatible)
+    local prepared_claude=false
+    local prepared_gemini=false
+    local prepared_codex=false
+
+    # Section-level platforms
+    local section_platforms=$(yq -o=json '.skills.platforms // null' "$yaml_file")
+    if [[ "$section_platforms" == "null" ]]; then
+        section_platforms="$sync_platforms"
+    fi
+
+    local count=$(yq '.skills.items | length // 0' "$yaml_file")
+    log_info "Skills 동기화 시작 ($count 개)"
+
+    for i in $(seq 0 $((count - 1))); do
+        local component
+        component=$(get_item_component "$yaml_file" "skills" "$i")
+
+        local item_platforms
+        if [[ "$ITEM_IS_OBJECT" == "true" ]]; then
+            item_platforms=$(yq -o=json ".skills.items[$i].platforms // null" "$yaml_file")
+            if [[ "$item_platforms" == "null" ]]; then
+                item_platforms="$section_platforms"
+            fi
+        else
+            item_platforms="$section_platforms"
+        fi
+
+        if [[ -z "$component" || "$component" == "null" ]]; then
             continue
         fi
 
-        if [[ "$DRY_RUN" == true ]]; then
-            log_dry "복사 (디렉토리): $source_dir -> $target_skill_dir"
-        else
-            cp -r "$source_dir" "$target_skill_dir"
-            log_info "복사 완료: ${DISPLAY_NAME}/"
-        fi
+        resolve_source_path "skills" "$component" ""
+
+        for target in $(echo "$item_platforms" | jq -r '.[]'); do
+            case "$target" in
+                claude)
+                    if [[ "$prepared_claude" == false && "$DRY_RUN" != true ]]; then
+                        backup_category "$target_path" "skills"
+                        rm -rf "$target_path/.claude/skills"
+                        mkdir -p "$target_path/.claude/skills"
+                        prepared_claude=true
+                    fi
+                    claude_sync_skills "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/skills"
+                    ;;
+                gemini)
+                    if [[ "$prepared_gemini" == false && "$DRY_RUN" != true ]]; then
+                        mkdir -p "$target_path/.gemini"
+                        prepared_gemini=true
+                    fi
+                    gemini_sync_skills "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/skills"
+                    ;;
+                codex)
+                    if [[ "$prepared_codex" == false && "$DRY_RUN" != true ]]; then
+                        mkdir -p "$target_path/.codex"
+                        prepared_codex=true
+                    fi
+                    codex_sync_skills "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/skills"
+                    ;;
+                *)
+                    log_warn "Unknown target: $target (skipping)"
+                    ;;
+            esac
+        done
     done
 
     log_success "Skills 동기화 완료"
@@ -549,6 +606,12 @@ process_yaml() {
         log_info "프로젝트: $CURRENT_PROJECT_NAME"
     fi
     log_info "========================================"
+
+    # CLI 프로젝트 파일 존재 확인
+    if ! validate_cli_project_files "$yaml_file" "$target_path"; then
+        log_error "CLI 프로젝트 파일 검증 실패, 이 yaml 처리 스킵: $yaml_file"
+        return 1
+    fi
 
     # .claude 디렉토리 생성
     if [[ "$DRY_RUN" != true ]]; then
@@ -642,8 +705,8 @@ main() {
         fi
     fi
 
-    # config.yaml에서 백업 유효기간 읽기
-    local config_file="$ROOT_DIR/scripts/config.yaml"
+    # config.yaml에서 백업 유효기간 읽기 (root에서 읽음)
+    local config_file="$ROOT_DIR/config.yaml"
     local retention_days=""
     if [[ -f "$config_file" ]]; then
         retention_days=$(yq '.backup_retention_days // ""' "$config_file")

@@ -1,57 +1,66 @@
 name: loopers-spring-kotlin-template
 path: /Users/toongri/IdeaProjects/loopers-spring-kotlin-template
+
 agents:
-  - component: explore
-  - component: librarian
-  - component: metis
-  - component: momus
-  - component: oracle
-  - component: prometheus
-  - component: sisyphus-junior
-    add-skills:
-      - testing
+  platforms: [claude]
+  items:
+    - explore
+    - librarian
+    - metis
+    - momus
+    - oracle
+    - prometheus
+    - component: sisyphus-junior
+      add-skills:
+        - testing
+        - implementation
 
 commands:
-  - component: cancel-ralph
+  platforms: [claude]
+  items:
+    - cancel-ralph
 
 hooks:
-  # 공통 hooks
-  - component: keyword-detector.sh
-    event: UserPromptSubmit
-    timeout: 10
-  - component: persistent-mode.sh
-    event: Stop
-    timeout: 15
-  - component: post-tool-verifier.sh
-    event: PostToolUse
-    timeout: 10
-  - component: pre-tool-enforcer.sh
-    event: PreToolUse
-    timeout: 5
-  - component: session-start.sh
-    event: SessionStart
-    timeout: 10
-
-  # Kotlin 프로젝트 전용 hooks (인라인)
-  - event: PreToolUse
-    matcher: "Bash(git commit:*)"
-    command: "./gradlew ktlintCheck -q 2>&1; KTLINT=$?; ./gradlew test -q 2>&1; TEST=$?; if [ $KTLINT -ne 0 ] || [ $TEST -ne 0 ]; then echo 'VALIDATION_FAILED: ktlint='$KTLINT' test='$TEST; exit 1; fi"
-  - event: PostToolUse
-    matcher: "Edit(**/src/main/**/*.kt)"
-    command: "#!/bin/bash\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  module=$(echo \"$file_path\" | grep -oE '^(apps|modules)/[^/]+' | tr '/' ':')\n  if [ -n \"$module\" ]; then\n    errors=$(./gradlew $module:compileKotlin -q 2>&1 | grep -E 'e:' | head -10)\n    if [ -n \"$errors\" ]; then\n      echo \"[컴파일 에러]\" >&2\n      echo \"$errors\" >&2\n    fi\n  fi\nfi\n\necho \"$input\""
-  - event: PostToolUse
-    matcher: "Edit(**/src/**/*.kt)"
-    command: "#!/bin/bash\ninput=$(cat)\n./gradlew ktlintFormat -q 2>/dev/null || true\necho \"$input\""
+  platforms: [claude]
+  items:
+    # Common hooks
+    - component: keyword-detector.sh
+      event: UserPromptSubmit
+      timeout: 10
+    - component: persistent-mode.sh
+      event: Stop
+      timeout: 15
+    - component: post-tool-verifier.sh
+      event: PostToolUse
+      timeout: 10
+    - component: pre-tool-enforcer.sh
+      event: PreToolUse
+      timeout: 5
+    - component: session-start.sh
+      event: SessionStart
+      timeout: 10
+    # Kotlin project-specific hooks (inline)
+    - event: PreToolUse
+      matcher: "Bash(git commit:*)"
+      command: "./gradlew ktlintCheck -q 2>&1; KTLINT=$?; ./gradlew test -q 2>&1; TEST=$?; if [ $KTLINT -ne 0 ] || [ $TEST -ne 0 ]; then echo 'VALIDATION_FAILED: ktlint='$KTLINT' test='$TEST; exit 1; fi"
+    - event: PostToolUse
+      matcher: "Edit(**/src/main/**/*.kt)"
+      command: "#!/bin/bash\ninput=$(cat)\nfile_path=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"')\n\nif [ -n \"$file_path\" ] && [ -f \"$file_path\" ]; then\n  module=$(echo \"$file_path\" | grep -oE '^(apps|modules)/[^/]+' | tr '/' ':')\n  if [ -n \"$module\" ]; then\n    errors=$(./gradlew $module:compileKotlin -q 2>&1 | grep -E 'e:' | head -10)\n    if [ -n \"$errors\" ]; then\n      echo \"[compile error]\" >&2\n      echo \"$errors\" >&2\n    fi\n  fi\nfi\n\necho \"$input\""
+    - event: PostToolUse
+      matcher: "Edit(**/src/**/*.kt)"
+      command: "#!/bin/bash\ninput=$(cat)\n./gradlew ktlintFormat -q 2>/dev/null || true\necho \"$input\""
 
 skills:
-  - component: agent-council
-  - component: clarify
-  - component: explore
-  - component: git-committer
-  - component: librarian
-  - component: metis
-  - component: momus
-  - component: oracle
-  - component: prometheus
-  - component: sisyphus
-  - component: loopers-kotlin-spring-template:testing
+  platforms: [claude]
+  items:
+    - agent-council
+    - clarify
+    - explore
+    - git-committer
+    - librarian
+    - metis
+    - momus
+    - oracle
+    - prometheus
+    - sisyphus
+    - loopers-kotlin-spring-template:testing

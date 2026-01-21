@@ -1,49 +1,58 @@
 name: oh-my-toong
 path: /Users/toongri/IdeaProjects/oh-my-toong
+
 agents:
-  - component: explore
-  - component: librarian
-  - component: metis
-  - component: momus
-  - component: oracle
-  - component: prometheus
-  - component: sisyphus-junior
+  platforms: [claude]
+  items:
+    - explore
+    - librarian
+    - metis
+    - momus
+    - oracle
+    - prometheus
+    - sisyphus-junior
 
 commands:
-  - component: cancel-ralph
+  platforms: [claude]
+  items:
+    - cancel-ralph
 
 hooks:
-  - component: keyword-detector.sh
-    event: UserPromptSubmit
-    timeout: 10
-  - component: persistent-mode.sh
-    event: Stop
-    timeout: 15
-  - component: post-tool-verifier.sh
-    event: PostToolUse
-    timeout: 10
-  - component: pre-tool-enforcer.sh
-    event: PreToolUse
-    timeout: 5
-  - component: session-start.sh
-    event: SessionStart
-    timeout: 10
-  - component: oh-my-toong:sync-schema-validator.sh
-    event: PostToolUse
-    matcher: "Edit(**/sync.yaml)"
-    timeout: 30
-  - component: oh-my-toong:sync-component-validator.sh
-    event: Stop
-    timeout: 30
+  platforms: [claude]
+  items:
+    - component: keyword-detector.sh
+      event: UserPromptSubmit
+      timeout: 10
+    - component: persistent-mode.sh
+      event: Stop
+      timeout: 15
+    - component: post-tool-verifier.sh
+      event: PostToolUse
+      timeout: 10
+    - component: pre-tool-enforcer.sh
+      event: PreToolUse
+      timeout: 5
+    - component: session-start.sh
+      event: SessionStart
+      timeout: 10
+    - component: oh-my-toong:sync-schema-validator.sh
+      event: PostToolUse
+      matcher: "Edit(**/sync.yaml)"
+      timeout: 30
+    - component: oh-my-toong:sync-component-validator.sh
+      event: Stop
+      timeout: 30
 
 skills:
-  - component: agent-council
-  - component: clarify
-  - component: explore
-  - component: git-committer
-  - component: librarian
-  - component: metis
-  - component: momus
-  - component: oracle
-  - component: prometheus
-  - component: sisyphus
+  platforms: [claude]
+  items:
+    - agent-council
+    - clarify
+    - explore
+    - git-committer
+    - librarian
+    - metis
+    - momus
+    - oracle
+    - prometheus
+    - sisyphus
