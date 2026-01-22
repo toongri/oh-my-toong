@@ -15,6 +15,19 @@ export BLUE='\033[0;34m'
 export NC='\033[0m'  # No Color
 
 # =============================================================================
+# Project Context (set by sync.sh for scoped resolution)
+# =============================================================================
+
+# Current project name from yaml name field or directory (for cross-project validation)
+export CURRENT_PROJECT_CONTEXT=""
+
+# Current project directory name (for file path resolution, always from directory structure)
+export CURRENT_PROJECT_DIR=""
+
+# Whether current context is root yaml (no project scope)
+export IS_ROOT_YAML_CONTEXT=false
+
+# =============================================================================
 # 로깅 함수 (Logging Functions)
 # 일관된 형식의 로그 출력을 제공
 # =============================================================================
@@ -299,6 +312,133 @@ resolve_source_path() {
         SOURCE_PATH="$ROOT_DIR/$category/${name}${extension}"
         DISPLAY_NAME="$name"
     fi
+}
+
+# =============================================================================
+# Project-Scoped Component Resolution
+# Enforces upward-only search: own project -> global, NEVER cross-project
+# =============================================================================
+
+# Resolve component path with project scoping
+# For projects/<name>/sync.yaml: own project -> global (NO cross-project)
+# For root sync.yaml: global only (NO projects/)
+#
+# Required global variables:
+#   - ROOT_DIR: Project root path
+#   - CURRENT_PROJECT_CONTEXT: Current project name (empty for root)
+#   - IS_ROOT_YAML_CONTEXT: true if root yaml
+#
+# Result global variables:
+#   - SCOPED_SOURCE_PATH: Resolved source path (empty if not found)
+#   - SCOPED_DISPLAY_NAME: Display name for logging
+#   - SCOPED_RESOLUTION_ERROR: Error message if resolution failed
+#
+# Usage: resolve_scoped_source_path "skills" "oracle" ""
+#        if [[ -z "$SCOPED_SOURCE_PATH" ]]; then log_warn "$SCOPED_RESOLUTION_ERROR"; fi
+resolve_scoped_source_path() {
+    local category="$1"
+    local name="$2"
+    local extension="$3"  # ".md" for files, "" for directories
+
+    SCOPED_SOURCE_PATH=""
+    SCOPED_DISPLAY_NAME=""
+    SCOPED_RESOLUTION_ERROR=""
+
+    # Parse project prefix if present
+    local parsed_project=""
+    local parsed_item="$name"
+    if [[ "$name" == *:* ]]; then
+        parsed_project=$(echo "$name" | cut -d: -f1)
+        parsed_item=$(echo "$name" | cut -d: -f2-)
+    fi
+
+    SCOPED_DISPLAY_NAME="$parsed_item"
+
+    # === Cross-Project Validation ===
+    if [[ -n "$parsed_project" ]]; then
+        if [[ "$IS_ROOT_YAML_CONTEXT" == true ]]; then
+            # Root yaml cannot reference any project
+            SCOPED_RESOLUTION_ERROR="Root sync.yaml cannot reference project components: $name (use global components only)"
+            return 1
+        elif [[ "$parsed_project" != "$CURRENT_PROJECT_CONTEXT" ]]; then
+            # Project yaml cannot reference other projects
+            SCOPED_RESOLUTION_ERROR="Cross-project reference not allowed: $name (current project: $CURRENT_PROJECT_CONTEXT)"
+            return 1
+        fi
+        # Same project prefix - allowed, treat as own project lookup
+    fi
+
+    # === Upward Search Logic ===
+    # Note: extension="" means check for both file and directory (hooks have extension in name)
+    if [[ "$IS_ROOT_YAML_CONTEXT" == true ]]; then
+        # Root yaml: global only
+        local global_path="$ROOT_DIR/$category/${parsed_item}${extension}"
+        local exists=false
+        if [[ -n "$extension" ]]; then
+            [[ -f "$global_path" ]] && exists=true
+        else
+            # Check both file and directory when extension is empty
+            [[ -f "$global_path" || -d "$global_path" ]] && exists=true
+        fi
+        if [[ "$exists" == true ]]; then
+            SCOPED_SOURCE_PATH="$global_path"
+            return 0
+        fi
+        SCOPED_RESOLUTION_ERROR="Component not found in global: $category/${parsed_item}${extension}"
+        return 1
+    else
+        # Project yaml: own project first, then global
+        # Use CURRENT_PROJECT_DIR (directory name) for file path resolution
+        # 1. Try own project
+        local project_path="$ROOT_DIR/projects/$CURRENT_PROJECT_DIR/$category/${parsed_item}${extension}"
+        if [[ -n "$extension" ]]; then
+            [[ -f "$project_path" ]] && { SCOPED_SOURCE_PATH="$project_path"; return 0; }
+        else
+            [[ -f "$project_path" || -d "$project_path" ]] && { SCOPED_SOURCE_PATH="$project_path"; return 0; }
+        fi
+
+        # 2. Fall back to global
+        local global_path="$ROOT_DIR/$category/${parsed_item}${extension}"
+        if [[ -n "$extension" ]]; then
+            [[ -f "$global_path" ]] && { SCOPED_SOURCE_PATH="$global_path"; return 0; }
+        else
+            [[ -f "$global_path" || -d "$global_path" ]] && { SCOPED_SOURCE_PATH="$global_path"; return 0; }
+        fi
+
+        SCOPED_RESOLUTION_ERROR="Component not found in project '$CURRENT_PROJECT_DIR' or global: $category/${parsed_item}${extension}"
+        return 1
+    fi
+}
+
+# Set project context from yaml file
+# Call this at the start of processing each yaml
+#
+# Usage: set_project_context "$yaml_file" "$is_root"
+set_project_context() {
+    local yaml_file="$1"
+    local is_root="$2"  # "true" or "false"
+
+    if [[ "$is_root" == "true" ]]; then
+        CURRENT_PROJECT_CONTEXT=""
+        CURRENT_PROJECT_DIR=""
+        IS_ROOT_YAML_CONTEXT=true
+    else
+        # Directory name is always used for file path resolution
+        CURRENT_PROJECT_DIR=$(basename "$(dirname "$yaml_file")")
+
+        # Project name: yaml name field first, then directory name (for cross-project validation)
+        local yaml_name=$(yq '.name // ""' "$yaml_file" 2>/dev/null)
+        if [[ -n "$yaml_name" && "$yaml_name" != "null" ]]; then
+            CURRENT_PROJECT_CONTEXT="$yaml_name"
+        else
+            CURRENT_PROJECT_CONTEXT="$CURRENT_PROJECT_DIR"
+        fi
+        IS_ROOT_YAML_CONTEXT=false
+    fi
+
+    export CURRENT_PROJECT_CONTEXT
+    export CURRENT_PROJECT_DIR
+    export IS_ROOT_YAML_CONTEXT
 }
 
 # =============================================================================

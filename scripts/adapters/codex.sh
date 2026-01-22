@@ -246,6 +246,86 @@ codex_sync_skills() {
 }
 
 # =============================================================================
+# Direct-Path Sync Functions (pre-resolved paths from sync.sh)
+# =============================================================================
+
+codex_sync_agents_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local add_skills="$4"
+    local dry_run="${5:-false}"
+
+    log_warn "Codex: agents는 지원되지 않습니다. Skip: $display_name"
+    return 0
+}
+
+codex_sync_commands_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local dry_run="${4:-false}"
+
+    log_warn "Codex: commands는 project-local이 아닌 ~/.codex/prompts/ (global)만 지원됩니다. Skip: $display_name"
+    return 0
+}
+
+codex_sync_hooks_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local event="$4"
+    local dry_run="${5:-false}"
+
+    # Codex only supports Notification events
+    local supported_events="Notification"
+    if [[ ! " $supported_events " =~ " $event " ]]; then
+        log_warn "Codex only supports Notification event. Skipping: $event"
+        return 0
+    fi
+
+    local target_dir="$target_path/.codex/hooks"
+    local target_file="$target_dir/${display_name}"
+
+    if [[ -f "$source_path" ]]; then
+        if [[ "$dry_run" == "true" ]]; then
+            log_dry "Copy: $source_path -> $target_file"
+        else
+            mkdir -p "$target_dir"
+            cp "$source_path" "$target_file"
+            chmod +x "$target_file"
+            log_info "Copied: ${display_name}"
+        fi
+    else
+        log_warn "Hook file not found: $source_path"
+    fi
+}
+
+codex_sync_skills_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local dry_run="${4:-false}"
+
+    local target_dir="$target_path/.codex/skills"
+    local target_skill_dir="$target_dir/${display_name}"
+
+    if [[ ! -d "$source_path" ]]; then
+        log_warn "Skill directory not found: $source_path"
+        return 1
+    fi
+
+    if [[ "$dry_run" == "true" ]]; then
+        log_dry "Copy (directory): $source_path -> $target_skill_dir"
+        return 0
+    fi
+
+    mkdir -p "$target_dir"
+    cp -r "$source_path" "$target_skill_dir"
+    log_info "Copied: ${display_name}/"
+}
+
+# =============================================================================
 # Settings Update
 # =============================================================================
 

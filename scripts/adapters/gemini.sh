@@ -280,6 +280,104 @@ gemini_sync_skills() {
 }
 
 # =============================================================================
+# Direct-Path Sync Functions (pre-resolved paths from sync.sh)
+# =============================================================================
+
+gemini_sync_agents_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local add_skills="$4"
+    local dry_run="${5:-false}"
+
+    # Gemini does not support native subagents - skip with warning
+    log_warn "Gemini: agents는 지원되지 않습니다. Skip: $display_name"
+    return 0
+}
+
+gemini_sync_commands_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local dry_run="${4:-false}"
+
+    local target_dir="$target_path/.gemini/commands"
+    local target_file="$target_dir/${display_name}.toml"
+
+    if [[ ! -f "$source_path" ]]; then
+        log_warn "Command file not found: $source_path"
+        return 0
+    fi
+
+    if [[ "$dry_run" == "true" ]]; then
+        log_dry "Convert: $source_path -> $target_file"
+        return 0
+    fi
+
+    mkdir -p "$target_dir"
+
+    # Extract frontmatter description
+    local description=""
+    if head -1 "$source_path" | grep -q "^---$"; then
+        description=$(awk '/^---$/{n++; next} n==1 && /^description:/{gsub(/^description:[[:space:]]*/, ""); print; exit}' "$source_path")
+    fi
+
+    cat > "$target_file" << EOF
+[extension]
+name = "$display_name"
+description = "$description"
+EOF
+
+    log_info "Created: ${display_name}.toml"
+}
+
+gemini_sync_hooks_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local dry_run="${4:-false}"
+
+    local target_dir="$target_path/.gemini/hooks"
+    local target_file="$target_dir/${display_name}"
+
+    if [[ -f "$source_path" ]]; then
+        if [[ "$dry_run" == "true" ]]; then
+            log_dry "Copy: $source_path -> $target_file"
+        else
+            mkdir -p "$target_dir"
+            cp "$source_path" "$target_file"
+            chmod +x "$target_file"
+            log_info "Copied: ${display_name}"
+        fi
+    else
+        log_warn "Hook file not found: $source_path"
+    fi
+}
+
+gemini_sync_skills_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local dry_run="${4:-false}"
+
+    local target_dir="$target_path/.gemini/skills/$display_name"
+
+    if [[ ! -d "$source_path" ]]; then
+        log_warn "Skill directory not found: $source_path"
+        return 1
+    fi
+
+    if [[ "$dry_run" == "true" ]]; then
+        log_dry "Copy (directory): $source_path -> $target_dir"
+        return 0
+    fi
+
+    mkdir -p "$target_dir"
+    cp -r "$source_path"/* "$target_dir/"
+    log_info "Copied: $display_name/"
+}
+
+# =============================================================================
 # Settings Update
 # =============================================================================
 

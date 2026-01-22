@@ -39,6 +39,14 @@ log_success() {
 }
 
 # =============================================================================
+# Project Context
+# =============================================================================
+
+CURRENT_PROJECT_CONTEXT=""
+CURRENT_PROJECT_DIR=""
+IS_ROOT_YAML_CONTEXT=false
+
+# =============================================================================
 # CLI 프로젝트 파일 매핑
 # =============================================================================
 
@@ -72,6 +80,78 @@ resolve_source_path() {
         SOURCE_PATH="$ROOT_DIR/$category/${name}${extension}"
         DISPLAY_NAME="$name"
     fi
+}
+
+# =============================================================================
+# Scoped Component Validation
+# =============================================================================
+
+# Validate component reference with project scoping
+# Returns 0 if valid, 1 if invalid (sets error message)
+validate_scoped_component() {
+    local category="$1"
+    local name="$2"
+    local extension="$3"  # ".md" for files, "" for directories
+
+    # Parse project prefix if present
+    local parsed_project=""
+    local parsed_item="$name"
+    if [[ "$name" == *:* ]]; then
+        parsed_project=$(echo "$name" | cut -d: -f1)
+        parsed_item=$(echo "$name" | cut -d: -f2-)
+    fi
+
+    # Cross-project validation
+    if [[ -n "$parsed_project" ]]; then
+        if [[ "$IS_ROOT_YAML_CONTEXT" == true ]]; then
+            log_error "Root sync.yaml cannot reference project components: $name"
+            return 1
+        elif [[ "$parsed_project" != "$CURRENT_PROJECT_CONTEXT" ]]; then
+            log_error "Cross-project reference not allowed: $name (current: $CURRENT_PROJECT_CONTEXT)"
+            return 1
+        fi
+    fi
+
+    # Existence check with upward search
+    # Note: extension="" means check for both file and directory (hooks have extension in name)
+    if [[ "$IS_ROOT_YAML_CONTEXT" == true ]]; then
+        local global_path="$ROOT_DIR/$category/${parsed_item}${extension}"
+        local exists=false
+        if [[ -n "$extension" ]]; then
+            [[ -f "$global_path" ]] && exists=true
+        else
+            # Check both file and directory when extension is empty
+            [[ -f "$global_path" || -d "$global_path" ]] && exists=true
+        fi
+        if [[ "$exists" == false ]]; then
+            log_error "Component not found: $name -> $global_path"
+            return 1
+        fi
+    else
+        # Use CURRENT_PROJECT_DIR (directory name) for file path resolution
+        local project_path="$ROOT_DIR/projects/$CURRENT_PROJECT_DIR/$category/${parsed_item}${extension}"
+        local global_path="$ROOT_DIR/$category/${parsed_item}${extension}"
+
+        local found=false
+        if [[ -n "$extension" ]]; then
+            # Extension provided - check files only
+            [[ -f "$project_path" ]] && found=true
+            [[ "$found" == false && -f "$global_path" ]] && found=true
+        else
+            # No extension - check both files and directories
+            [[ -f "$project_path" || -d "$project_path" ]] && found=true
+            [[ "$found" == false && ( -f "$global_path" || -d "$global_path" ) ]] && found=true
+        fi
+
+        if [[ "$found" == false ]]; then
+            log_error "Component not found in project '$CURRENT_PROJECT_DIR' or global: $name"
+            log_info "  Searched: $project_path"
+            log_info "  Searched: $global_path"
+            return 1
+        fi
+    fi
+
+    return 0
 }
 
 # =============================================================================
@@ -201,6 +281,31 @@ validate_components() {
 
     log_info "검증 중: $yaml_name"
 
+    # Determine if this is root yaml
+    local is_root="false"
+    if [[ "$yaml_file" == "$ROOT_DIR/sync.yaml" ]]; then
+        is_root="true"
+    fi
+
+    # Set project context
+    if [[ "$is_root" == "true" ]]; then
+        CURRENT_PROJECT_CONTEXT=""
+        CURRENT_PROJECT_DIR=""
+        IS_ROOT_YAML_CONTEXT=true
+    else
+        # Directory name is always used for file path resolution
+        CURRENT_PROJECT_DIR=$(basename "$(dirname "$yaml_file")")
+
+        # Project name: yaml name field first, then directory name (for cross-project validation)
+        local yaml_name_field=$(yq '.name // ""' "$yaml_file" 2>/dev/null)
+        if [[ -n "$yaml_name_field" && "$yaml_name_field" != "null" ]]; then
+            CURRENT_PROJECT_CONTEXT="$yaml_name_field"
+        else
+            CURRENT_PROJECT_CONTEXT="$CURRENT_PROJECT_DIR"
+        fi
+        IS_ROOT_YAML_CONTEXT=false
+    fi
+
     # path 필드 확인
     local target_path=$(yq '.path // ""' "$yaml_file")
     if [[ -z "$target_path" || "$target_path" == "null" ]]; then
@@ -221,10 +326,7 @@ validate_components() {
                 component=$(get_item_component "$yaml_file" "agents" "$i")
 
                 if [[ -n "$component" && "$component" != "null" ]]; then
-                    resolve_source_path "agents" "$component" ".md"
-                    if [[ ! -f "$SOURCE_PATH" ]]; then
-                        log_error "Agent 파일 없음: $component -> $SOURCE_PATH"
-                    fi
+                    validate_scoped_component "agents" "$component" ".md" || true
                 fi
 
                 # add-skills 검증 (only for object items)
@@ -262,10 +364,7 @@ validate_components() {
                 component=$(get_item_component "$yaml_file" "commands" "$i")
 
                 if [[ -n "$component" && "$component" != "null" ]]; then
-                    resolve_source_path "commands" "$component" ".md"
-                    if [[ ! -f "$SOURCE_PATH" ]]; then
-                        log_error "Command 파일 없음: $component -> $SOURCE_PATH"
-                    fi
+                    validate_scoped_component "commands" "$component" ".md" || true
                 fi
             done
         fi
@@ -279,10 +378,7 @@ validate_components() {
             for i in $(seq 0 $((count - 1))); do
                 local component=$(yq ".hooks.items[$i].component // \"\"" "$yaml_file")
                 if [[ -n "$component" && "$component" != "null" ]]; then
-                    resolve_source_path "hooks" "$component" ""
-                    if [[ ! -f "$SOURCE_PATH" ]]; then
-                        log_error "Hook 파일 없음: $component -> $SOURCE_PATH"
-                    fi
+                    validate_scoped_component "hooks" "$component" "" || true
                 fi
             done
         fi
@@ -298,10 +394,7 @@ validate_components() {
                 component=$(get_item_component "$yaml_file" "skills" "$i")
 
                 if [[ -n "$component" && "$component" != "null" ]]; then
-                    resolve_source_path "skills" "$component" ""
-                    if [[ ! -d "$SOURCE_PATH" ]]; then
-                        log_error "Skill 디렉토리 없음: $component -> $SOURCE_PATH"
-                    fi
+                    validate_scoped_component "skills" "$component" "" || true
                 fi
             done
         fi

@@ -308,6 +308,124 @@ claude_sync_skills() {
 }
 
 # =============================================================================
+# Direct-Path Sync Functions (pre-resolved paths from sync.sh)
+# =============================================================================
+
+# Sync agent with pre-resolved source path
+# Arguments:
+#   $1 - target_path: Target project path
+#   $2 - display_name: Display name for the agent
+#   $3 - source_path: Pre-resolved absolute source path
+#   $4 - add_skills: Comma-separated skills to add (can be empty)
+#   $5 - dry_run: "true" or "false"
+claude_sync_agents_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local add_skills="${4:-}"
+    local dry_run="${5:-false}"
+
+    local target_dir="$target_path/.claude/agents"
+    local target_file="$target_dir/${display_name}.md"
+
+    if [[ ! -f "$source_path" ]]; then
+        log_warn "Agent file not found: $source_path"
+        return 0
+    fi
+
+    if [[ "$dry_run" == "true" ]]; then
+        log_dry "Copy: $source_path -> $target_file"
+        return 0
+    fi
+
+    mkdir -p "$target_dir"
+    cp "$source_path" "$target_file"
+    log_info "Copied: ${display_name}.md"
+
+    # Handle add_skills if provided
+    if [[ -n "$add_skills" ]]; then
+        IFS=',' read -ra skills_array <<< "$add_skills"
+        for skill in "${skills_array[@]}"; do
+            claude_update_agent_frontmatter "$target_file" "$skill" "$dry_run"
+        done
+    fi
+}
+
+# Sync command with pre-resolved source path
+claude_sync_commands_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local dry_run="${4:-false}"
+
+    local target_dir="$target_path/.claude/commands"
+    local target_file="$target_dir/${display_name}.md"
+
+    if [[ ! -f "$source_path" ]]; then
+        log_warn "Command file not found: $source_path"
+        return 0
+    fi
+
+    if [[ "$dry_run" == "true" ]]; then
+        log_dry "Copy: $source_path -> $target_file"
+        return 0
+    fi
+
+    mkdir -p "$target_dir"
+    cp "$source_path" "$target_file"
+    log_info "Copied: ${display_name}.md"
+}
+
+# Sync hook with pre-resolved source path
+claude_sync_hooks_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local dry_run="${4:-false}"
+
+    local target_dir="$target_path/.claude/hooks"
+    local target_file="$target_dir/${display_name}"
+
+    if [[ -f "$source_path" ]]; then
+        if [[ "$dry_run" == "true" ]]; then
+            log_dry "Copy: $source_path -> $target_file"
+        else
+            mkdir -p "$target_dir"
+            cp "$source_path" "$target_file"
+            chmod +x "$target_file"
+            log_info "Copied: ${display_name}"
+        fi
+    else
+        log_warn "Hook file not found: $source_path"
+    fi
+}
+
+# Sync skill with pre-resolved source path
+claude_sync_skills_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local dry_run="${4:-false}"
+
+    local target_dir="$target_path/.claude/skills"
+    local target_skill_dir="$target_dir/${display_name}"
+
+    if [[ ! -d "$source_path" ]]; then
+        log_warn "Skill directory not found: $source_path"
+        return 0
+    fi
+
+    if [[ "$dry_run" == "true" ]]; then
+        log_dry "Copy (directory): $source_path -> $target_skill_dir"
+        return 0
+    fi
+
+    mkdir -p "$target_dir"
+    cp -r "$source_path" "$target_skill_dir"
+    log_info "Copied: ${display_name}/"
+}
+
+# =============================================================================
 # Settings Update
 # =============================================================================
 

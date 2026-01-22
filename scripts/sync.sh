@@ -130,7 +130,11 @@ sync_agents() {
             continue
         fi
 
-        resolve_source_path "agents" "$component" ".md"
+        resolve_scoped_source_path "agents" "$component" ".md"
+        if [[ -z "$SCOPED_SOURCE_PATH" ]]; then
+            log_warn "$SCOPED_RESOLUTION_ERROR"
+            continue
+        fi
 
         # Dispatch to each target adapter
         for target in $(echo "$item_platforms" | jq -r '.[]'); do
@@ -142,21 +146,21 @@ sync_agents() {
                         mkdir -p "$target_path/.claude/agents"
                         prepared_claude=true
                     fi
-                    claude_sync_agents "$target_path" "$component" "$add_skills" "$DRY_RUN" "$ROOT_DIR/agents"
+                    claude_sync_agents_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$add_skills" "$DRY_RUN"
                     ;;
                 gemini)
                     if [[ "$prepared_gemini" == false && "$DRY_RUN" != true ]]; then
                         mkdir -p "$target_path/.gemini"
                         prepared_gemini=true
                     fi
-                    gemini_sync_agents "$target_path" "$component" "$add_skills" "$DRY_RUN" "$ROOT_DIR/agents"
+                    gemini_sync_agents_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$add_skills" "$DRY_RUN"
                     ;;
                 codex)
                     if [[ "$prepared_codex" == false && "$DRY_RUN" != true ]]; then
                         mkdir -p "$target_path/.codex"
                         prepared_codex=true
                     fi
-                    codex_sync_agents "$target_path" "$component" "$add_skills" "$DRY_RUN" "$ROOT_DIR/agents"
+                    codex_sync_agents_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$add_skills" "$DRY_RUN"
                     ;;
                 *)
                     log_warn "Unknown target: $target (skipping)"
@@ -226,7 +230,11 @@ sync_commands() {
             continue
         fi
 
-        resolve_source_path "commands" "$component" ".md"
+        resolve_scoped_source_path "commands" "$component" ".md"
+        if [[ -z "$SCOPED_SOURCE_PATH" ]]; then
+            log_warn "$SCOPED_RESOLUTION_ERROR"
+            continue
+        fi
 
         # Dispatch to each target adapter
         for target in $(echo "$item_platforms" | jq -r '.[]'); do
@@ -238,21 +246,21 @@ sync_commands() {
                         mkdir -p "$target_path/.claude/commands"
                         prepared_claude=true
                     fi
-                    claude_sync_commands "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/commands"
+                    claude_sync_commands_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
                     ;;
                 gemini)
                     if [[ "$prepared_gemini" == false && "$DRY_RUN" != true ]]; then
                         mkdir -p "$target_path/.gemini/extensions"
                         prepared_gemini=true
                     fi
-                    gemini_sync_commands "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/commands"
+                    gemini_sync_commands_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
                     ;;
                 codex)
                     if [[ "$prepared_codex" == false && "$DRY_RUN" != true ]]; then
                         mkdir -p "$target_path/.codex"
                         prepared_codex=true
                     fi
-                    codex_sync_commands "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/commands"
+                    codex_sync_commands_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
                     ;;
                 *)
                     log_warn "Unknown target: $target (skipping)"
@@ -327,11 +335,17 @@ sync_hooks() {
             item_platforms="$effective_platforms"
         fi
 
-        # Resolve display_name if component exists
+        # Resolve source path and display_name if component exists (file-based hooks)
         local display_name=""
+        local scoped_source=""
         if [[ -n "$component" && "$component" != "null" ]]; then
-            resolve_source_path "hooks" "$component" ""
-            display_name="$DISPLAY_NAME"
+            resolve_scoped_source_path "hooks" "$component" ""
+            if [[ -z "$SCOPED_SOURCE_PATH" ]]; then
+                log_warn "$SCOPED_RESOLUTION_ERROR"
+                return 0
+            fi
+            display_name="$SCOPED_DISPLAY_NAME"
+            scoped_source="$SCOPED_SOURCE_PATH"
         fi
 
         # Dispatch to each target adapter
@@ -346,7 +360,7 @@ sync_hooks() {
                     fi
 
                     if [[ -n "$component" && "$component" != "null" ]]; then
-                        claude_sync_hooks "$target_path" "$component" "$hook_event" "$matcher" "$timeout" "$hook_type" "$custom_command" "$prompt_text" "$DRY_RUN" "$ROOT_DIR/hooks"
+                        claude_sync_hooks_direct "$target_path" "$display_name" "$scoped_source" "$DRY_RUN"
                     fi
 
                     local hook_entry
@@ -379,7 +393,7 @@ sync_hooks() {
                     fi
 
                     if [[ -n "$component" && "$component" != "null" ]]; then
-                        gemini_sync_hooks "$target_path" "$component" "$hook_event" "$matcher" "$timeout" "$hook_type" "$custom_command" "$prompt_text" "$DRY_RUN" "$ROOT_DIR/hooks"
+                        gemini_sync_hooks_direct "$target_path" "$display_name" "$scoped_source" "$DRY_RUN"
                     fi
 
                     local gemini_hook_entry
@@ -410,7 +424,7 @@ sync_hooks() {
                     fi
 
                     if [[ -n "$component" && "$component" != "null" ]]; then
-                        codex_sync_hooks "$target_path" "$component" "$hook_event" "$matcher" "$timeout" "$hook_type" "$custom_command" "$prompt_text" "$DRY_RUN" "$ROOT_DIR/hooks"
+                        codex_sync_hooks_direct "$target_path" "$display_name" "$scoped_source" "$hook_event" "$DRY_RUN"
                     fi
 
                     codex_hooks_json=$(echo "$codex_hooks_json" | jq --arg event "$hook_event" '. + {($event): true}')
@@ -528,7 +542,11 @@ sync_skills() {
             continue
         fi
 
-        resolve_source_path "skills" "$component" ""
+        resolve_scoped_source_path "skills" "$component" ""
+        if [[ -z "$SCOPED_SOURCE_PATH" ]]; then
+            log_warn "$SCOPED_RESOLUTION_ERROR"
+            continue
+        fi
 
         for target in $(echo "$item_platforms" | jq -r '.[]'); do
             case "$target" in
@@ -539,21 +557,21 @@ sync_skills() {
                         mkdir -p "$target_path/.claude/skills"
                         prepared_claude=true
                     fi
-                    claude_sync_skills "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/skills"
+                    claude_sync_skills_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
                     ;;
                 gemini)
                     if [[ "$prepared_gemini" == false && "$DRY_RUN" != true ]]; then
                         mkdir -p "$target_path/.gemini"
                         prepared_gemini=true
                     fi
-                    gemini_sync_skills "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/skills"
+                    gemini_sync_skills_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
                     ;;
                 codex)
                     if [[ "$prepared_codex" == false && "$DRY_RUN" != true ]]; then
                         mkdir -p "$target_path/.codex"
                         prepared_codex=true
                     fi
-                    codex_sync_skills "$target_path" "$component" "$DRY_RUN" "$ROOT_DIR/skills"
+                    codex_sync_skills_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
                     ;;
                 *)
                     log_warn "Unknown target: $target (skipping)"
@@ -585,19 +603,11 @@ process_yaml() {
         return 0
     fi
 
-    # 프로젝트 이름 결정
-    if [[ "$is_root" == "true" ]]; then
-        CURRENT_PROJECT_NAME=""
-    else
-        # yaml에 name 필드가 있으면 사용, 없으면 디렉토리 이름
-        local yaml_name=$(yq '.name // ""' "$yaml_file")
-        if [[ -n "$yaml_name" && "$yaml_name" != "null" ]]; then
-            CURRENT_PROJECT_NAME="$yaml_name"
-        else
-            # yaml 파일이 있는 디렉토리 이름
-            CURRENT_PROJECT_NAME=$(basename "$(dirname "$yaml_file")")
-        fi
-    fi
+    # Set project context for scoped resolution
+    set_project_context "$yaml_file" "$is_root"
+
+    # Also set CURRENT_PROJECT_NAME for backward compatibility (backup functions)
+    CURRENT_PROJECT_NAME="$CURRENT_PROJECT_CONTEXT"
 
     log_info "========================================"
     log_info "처리 중: $yaml_file"

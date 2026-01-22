@@ -369,11 +369,11 @@ test_sync_agents_dispatches_to_codex() {
 }
 
 test_sync_commands_dispatches_to_gemini() {
-    # sync_commands should have gemini_sync_commands dispatch
-    if grep -A 80 '^sync_commands\(\)' "$ROOT_DIR/sync.sh" | grep -q 'gemini_sync_commands'; then
+    # sync_commands should have gemini_sync_commands_direct dispatch
+    if grep -A 120 '^sync_commands\(\)' "$ROOT_DIR/sync.sh" | grep -q 'gemini_sync_commands_direct'; then
         return 0
     else
-        echo "ASSERTION FAILED: sync_commands should dispatch to gemini_sync_commands"
+        echo "ASSERTION FAILED: sync_commands should dispatch to gemini_sync_commands_direct"
         return 1
     fi
 }
@@ -419,8 +419,8 @@ test_sync_hooks_dispatches_to_gemini() {
 }
 
 test_sync_hooks_dispatches_to_codex() {
-    # sync_hooks should have codex dispatch
-    if grep -A 150 '^sync_hooks\(\)' "$ROOT_DIR/sync.sh" | grep -q 'codex_sync_hooks\|codex_update_settings'; then
+    # sync_hooks should have codex dispatch (direct functions)
+    if grep -A 200 '^sync_hooks\(\)' "$ROOT_DIR/sync.sh" | grep -q 'codex_sync_hooks_direct\|codex_update_settings'; then
         return 0
     else
         echo "ASSERTION FAILED: sync_hooks should dispatch to codex adapter functions"
@@ -529,7 +529,7 @@ test_sync_agents_uses_null_check_for_component_platforms() {
 
 test_sync_agents_uses_jq_for_platforms_iteration() {
     # sync_agents should use jq to iterate over JSON array platforms
-    if grep -A 80 '^sync_agents\(\)' "$ROOT_DIR/sync.sh" | grep -q "jq -r '\.\[\]'"; then
+    if grep -A 100 '^sync_agents\(\)' "$ROOT_DIR/sync.sh" | grep -q "jq -r '\.\[\]'"; then
         return 0
     else
         echo "ASSERTION FAILED: sync_agents should use jq for platforms iteration"
