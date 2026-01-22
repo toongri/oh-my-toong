@@ -583,6 +583,105 @@ sync_skills() {
     log_success "Skills 동기화 완료"
 }
 
+sync_scripts() {
+    local target_path="$1"
+    local yaml_file="$2"
+
+    # 필드 자체가 없으면 스킵
+    local field_exists=$(yq '.scripts' "$yaml_file")
+    if [[ "$field_exists" == "null" ]]; then
+        return 0
+    fi
+
+    # items 필드 확인
+    local items_exists=$(yq '.scripts.items' "$yaml_file")
+    if [[ "$items_exists" == "null" ]]; then
+        log_warn "scripts.items가 없음, 스킵"
+        return 0
+    fi
+
+    # Get default platforms from config.yaml
+    local default_platforms=$(get_default_platforms)
+
+    # Get top-level platforms
+    local sync_platforms=$(yq -o=json '.platforms // null' "$yaml_file")
+    if [[ "$sync_platforms" == "null" ]]; then
+        sync_platforms="$default_platforms"
+    fi
+
+    # Track which CLIs need directory preparation (Bash 3.2 compatible)
+    local prepared_claude=false
+    local prepared_gemini=false
+    local prepared_codex=false
+
+    # Section-level platforms
+    local section_platforms=$(yq -o=json '.scripts.platforms // null' "$yaml_file")
+    if [[ "$section_platforms" == "null" ]]; then
+        section_platforms="$sync_platforms"
+    fi
+
+    local count=$(yq '.scripts.items | length // 0' "$yaml_file")
+    log_info "Scripts 동기화 시작 ($count 개)"
+
+    for i in $(seq 0 $((count - 1))); do
+        local component
+        component=$(get_item_component "$yaml_file" "scripts" "$i")
+
+        local item_platforms
+        if [[ "$ITEM_IS_OBJECT" == "true" ]]; then
+            item_platforms=$(yq -o=json ".scripts.items[$i].platforms // null" "$yaml_file")
+            if [[ "$item_platforms" == "null" ]]; then
+                item_platforms="$section_platforms"
+            fi
+        else
+            item_platforms="$section_platforms"
+        fi
+
+        if [[ -z "$component" || "$component" == "null" ]]; then
+            continue
+        fi
+
+        resolve_scoped_source_path "scripts" "$component" ""
+        if [[ -z "$SCOPED_SOURCE_PATH" ]]; then
+            log_warn "$SCOPED_RESOLUTION_ERROR"
+            continue
+        fi
+
+        for target in $(echo "$item_platforms" | jq -r '.[]'); do
+            case "$target" in
+                claude)
+                    if [[ "$prepared_claude" == false && "$DRY_RUN" != true ]]; then
+                        backup_category "$target_path" "scripts"
+                        rm -rf "$target_path/scripts"
+                        mkdir -p "$target_path/scripts"
+                        prepared_claude=true
+                    fi
+                    claude_sync_scripts_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
+                    ;;
+                gemini)
+                    if [[ "$prepared_gemini" == false && "$DRY_RUN" != true ]]; then
+                        mkdir -p "$target_path/scripts"
+                        prepared_gemini=true
+                    fi
+                    gemini_sync_scripts_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
+                    ;;
+                codex)
+                    if [[ "$prepared_codex" == false && "$DRY_RUN" != true ]]; then
+                        mkdir -p "$target_path/scripts"
+                        prepared_codex=true
+                    fi
+                    codex_sync_scripts_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
+                    ;;
+                *)
+                    log_warn "Unknown target: $target (skipping)"
+                    ;;
+            esac
+        done
+    done
+
+    log_success "Scripts 동기화 완료"
+}
+
 # =============================================================================
 # YAML 처리
 # =============================================================================
@@ -633,6 +732,7 @@ process_yaml() {
     sync_commands "$target_path" "$yaml_file"
     sync_hooks "$target_path" "$yaml_file"
     sync_skills "$target_path" "$yaml_file"
+    sync_scripts "$target_path" "$yaml_file"
 
     log_success "완료: $yaml_file"
 }

@@ -665,6 +665,80 @@ test_sync_skips_yaml_on_missing_cli_file() {
 }
 
 # =============================================================================
+# Tests: sync_scripts Function
+# =============================================================================
+
+test_sync_scripts_function_exists() {
+    # sync_scripts function should exist in sync.sh
+    if grep -E '^sync_scripts\(\)' "$ROOT_DIR/sync.sh" >/dev/null 2>&1; then
+        return 0
+    else
+        echo "ASSERTION FAILED: sync_scripts() function should exist in sync.sh"
+        return 1
+    fi
+}
+
+test_sync_scripts_uses_adapter_dispatch() {
+    # sync_scripts should use adapter dispatch pattern (e.g., claude_sync_scripts)
+    if grep -A 100 '^sync_scripts\(\)' "$ROOT_DIR/sync.sh" | grep -q 'claude_sync_scripts'; then
+        return 0
+    else
+        echo "ASSERTION FAILED: sync_scripts should call claude_sync_scripts adapter"
+        return 1
+    fi
+}
+
+test_sync_scripts_parses_platforms() {
+    # sync_scripts should parse platforms from YAML (top-level)
+    if grep -A 80 '^sync_scripts\(\)' "$ROOT_DIR/sync.sh" | grep -q '\.platforms'; then
+        return 0
+    else
+        echo "ASSERTION FAILED: sync_scripts should parse platforms from YAML"
+        return 1
+    fi
+}
+
+test_sync_scripts_uses_json_output_for_platforms() {
+    # sync_scripts should use -o=json for platforms
+    if grep -A 80 '^sync_scripts\(\)' "$ROOT_DIR/sync.sh" | grep -q "yq -o=json '\.platforms"; then
+        return 0
+    else
+        echo "ASSERTION FAILED: sync_scripts should use 'yq -o=json' for platforms"
+        return 1
+    fi
+}
+
+test_sync_scripts_dispatches_to_gemini() {
+    # sync_scripts should have gemini_sync_scripts dispatch
+    if grep -A 100 '^sync_scripts\(\)' "$ROOT_DIR/sync.sh" | grep -q 'gemini_sync_scripts'; then
+        return 0
+    else
+        echo "ASSERTION FAILED: sync_scripts should dispatch to gemini_sync_scripts"
+        return 1
+    fi
+}
+
+test_sync_scripts_dispatches_to_codex() {
+    # sync_scripts should have codex_sync_scripts dispatch
+    if grep -A 100 '^sync_scripts\(\)' "$ROOT_DIR/sync.sh" | grep -q 'codex_sync_scripts'; then
+        return 0
+    else
+        echo "ASSERTION FAILED: sync_scripts should dispatch to codex_sync_scripts"
+        return 1
+    fi
+}
+
+test_sync_scripts_is_called_in_sync_to_target() {
+    # sync_scripts should be called in sync_to_target function
+    if grep -q 'sync_scripts "\$target_path" "\$yaml_file"' "$ROOT_DIR/sync.sh"; then
+        return 0
+    else
+        echo "ASSERTION FAILED: sync_scripts should be called in sync_to_target"
+        return 1
+    fi
+}
+
+# =============================================================================
 # Main Test Runner
 # =============================================================================
 
@@ -728,6 +802,15 @@ main() {
     run_test test_sync_validates_gemini_project_file
     run_test test_sync_validates_codex_project_file
     run_test test_sync_skips_yaml_on_missing_cli_file
+
+    # sync_scripts Function
+    run_test test_sync_scripts_function_exists
+    run_test test_sync_scripts_uses_adapter_dispatch
+    run_test test_sync_scripts_parses_platforms
+    run_test test_sync_scripts_uses_json_output_for_platforms
+    run_test test_sync_scripts_dispatches_to_gemini
+    run_test test_sync_scripts_dispatches_to_codex
+    run_test test_sync_scripts_is_called_in_sync_to_target
 
     echo "=========================================="
     echo "Results: $TESTS_PASSED passed, $TESTS_FAILED failed"

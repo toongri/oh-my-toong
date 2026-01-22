@@ -10,3 +10,6 @@
 
 # script
 scripts/.bak/
+
+# node
+node_modules/

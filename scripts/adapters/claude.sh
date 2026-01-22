@@ -425,6 +425,31 @@ claude_sync_skills_direct() {
     log_info "Copied: ${display_name}/"
 }
 
+# Sync script with pre-resolved source path
+claude_sync_scripts_direct() {
+    local target_path="$1"
+    local display_name="$2"
+    local source_path="$3"
+    local dry_run="${4:-false}"
+
+    local target_dir="$target_path/scripts"
+    local target_file="$target_dir/${display_name}"
+
+    if [[ ! -f "$source_path" ]]; then
+        log_warn "Script file not found: $source_path"
+        return 0
+    fi
+
+    if [[ "$dry_run" == "true" ]]; then
+        log_dry "Copy: $source_path -> $target_file"
+        return 0
+    fi
+
+    mkdir -p "$target_dir"
+    cp "$source_path" "$target_file"
+    log_info "Copied: ${display_name}"
+}
+
 # =============================================================================
 # Settings Update
 # =============================================================================
