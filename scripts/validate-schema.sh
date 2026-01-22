@@ -35,19 +35,21 @@ log_success() {
 # 유효한 값 정의
 # =============================================================================
 
-VALID_TOP_LEVEL_FIELDS="name path agents commands hooks skills platforms"
+VALID_TOP_LEVEL_FIELDS="name path agents commands hooks skills scripts platforms"
 
 # Section-level fields (new format: object with items)
 VALID_AGENT_SECTION_FIELDS="platforms items"
 VALID_COMMAND_SECTION_FIELDS="platforms items"
 VALID_HOOK_SECTION_FIELDS="platforms items"
 VALID_SKILL_SECTION_FIELDS="platforms items"
+VALID_SCRIPT_SECTION_FIELDS="platforms items"
 
 # Item-level fields (inside items array, for objects)
 VALID_AGENT_ITEM_FIELDS="component add-skills platforms"
 VALID_COMMAND_ITEM_FIELDS="component platforms"
 VALID_HOOK_ITEM_FIELDS="component event matcher type timeout command prompt platforms"
 VALID_SKILL_ITEM_FIELDS="component platforms"
+VALID_SCRIPT_ITEM_FIELDS="component platforms"
 
 VALID_EVENTS="SessionStart UserPromptSubmit PreToolUse PostToolUse Stop"
 VALID_HOOK_TYPES="command prompt"
@@ -427,6 +429,64 @@ validate_skills() {
     done
 }
 
+validate_scripts() {
+    local yaml_file="$1"
+    local platforms_json="$2"
+
+    local field_exists=$(yq '.scripts' "$yaml_file")
+    if [[ "$field_exists" == "null" ]]; then
+        return 0
+    fi
+
+    # Reject old array format
+    if ! check_new_format "$yaml_file" "scripts"; then
+        return 0
+    fi
+
+    # New format: object with platforms and items
+    check_unknown_fields "$yaml_file" ".scripts" "$VALID_SCRIPT_SECTION_FIELDS" "scripts"
+    check_platforms_values "$yaml_file" ".scripts.platforms" "scripts.platforms"
+
+    local section_platforms=$(yq -o=json '.scripts.platforms // null' "$yaml_file")
+    if [[ "$section_platforms" == "null" ]]; then
+        section_platforms="$platforms_json"
+    fi
+
+    local count=$(yq '.scripts.items | length // 0' "$yaml_file")
+    for i in $(seq 0 $((count - 1))); do
+        local item_type=$(yq ".scripts.items[$i] | type" "$yaml_file")
+        local component
+        local is_object_item=false
+
+        if [[ "$item_type" == "!!str" ]]; then
+            component=$(yq ".scripts.items[$i]" "$yaml_file")
+        else
+            is_object_item=true
+            component=$(yq ".scripts.items[$i].component // \"\"" "$yaml_file")
+        fi
+
+        if [[ "$is_object_item" == "true" ]]; then
+            check_unknown_fields "$yaml_file" ".scripts.items[$i]" "$VALID_SCRIPT_ITEM_FIELDS" "scripts.items[$i]"
+
+            if [[ -n "$component" && "$component" != "null" ]]; then
+                check_project_component_format "$component" "scripts.items[$i].component"
+            fi
+
+            check_platforms_values "$yaml_file" ".scripts.items[$i].platforms" "scripts.items[$i].platforms"
+            local item_platforms=$(yq -o=json ".scripts.items[$i].platforms // null" "$yaml_file")
+            if [[ "$item_platforms" == "null" ]]; then
+                item_platforms="$section_platforms"
+            fi
+            warn_cli_limitations "$yaml_file" "scripts" "$item_platforms"
+        else
+            if [[ -n "$component" && "$component" != "null" ]]; then
+                check_project_component_format "$component" "scripts.items[$i]"
+            fi
+            warn_cli_limitations "$yaml_file" "scripts" "$section_platforms"
+        fi
+    done
+}
+
 validate_yaml_schema() {
     local yaml_file="$1"
     local yaml_name=$(basename "$yaml_file")
@@ -450,6 +510,7 @@ validate_yaml_schema() {
     validate_commands "$yaml_file" "$platforms_json"
     validate_hooks "$yaml_file" "$platforms_json"
     validate_skills "$yaml_file" "$platforms_json"
+    validate_scripts "$yaml_file" "$platforms_json"
 
     return 0
 }

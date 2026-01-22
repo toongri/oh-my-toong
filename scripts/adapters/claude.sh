@@ -432,7 +432,7 @@ claude_sync_scripts_direct() {
     local source_path="$3"
     local dry_run="${4:-false}"
 
-    local target_dir="$target_path/scripts"
+    local target_dir="$target_path/.claude/scripts"
     local target_file="$target_dir/${display_name}"
 
     if [[ ! -f "$source_path" ]]; then

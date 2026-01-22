@@ -651,23 +651,25 @@ sync_scripts() {
             case "$target" in
                 claude)
                     if [[ "$prepared_claude" == false && "$DRY_RUN" != true ]]; then
-                        backup_category "$target_path" "scripts"
-                        rm -rf "$target_path/scripts"
-                        mkdir -p "$target_path/scripts"
+                        backup_category "$target_path/.claude" "scripts"
+                        rm -rf "$target_path/.claude/scripts"
+                        mkdir -p "$target_path/.claude/scripts"
                         prepared_claude=true
                     fi
                     claude_sync_scripts_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
                     ;;
                 gemini)
                     if [[ "$prepared_gemini" == false && "$DRY_RUN" != true ]]; then
-                        mkdir -p "$target_path/scripts"
+                        rm -rf "$target_path/.gemini/scripts"
+                        mkdir -p "$target_path/.gemini/scripts"
                         prepared_gemini=true
                     fi
                     gemini_sync_scripts_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
                     ;;
                 codex)
                     if [[ "$prepared_codex" == false && "$DRY_RUN" != true ]]; then
-                        mkdir -p "$target_path/scripts"
+                        rm -rf "$target_path/.codex/scripts"
+                        mkdir -p "$target_path/.codex/scripts"
                         prepared_codex=true
                     fi
                     codex_sync_scripts_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"

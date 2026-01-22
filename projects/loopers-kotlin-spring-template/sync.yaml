@@ -19,6 +19,12 @@ commands:
   platforms: [claude]
   items:
     - cancel-ralph
+    - hud
+
+scripts:
+  platforms: [claude]
+  items:
+    - hud.js
 
 hooks:
   platforms: [claude]

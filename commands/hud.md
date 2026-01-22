@@ -23,20 +23,18 @@ When user runs `/hud setup`:
    - Require v18+ for ESM support
    - If not available, inform user and stop
 
-2. **Build TypeScript**
-   ```bash
-   cd scripts/hud && npm install && npm run build
-   ```
-   - If build fails, show error and stop
+2. **Check synced script exists**
+   - Verify `.claude/scripts/hud.js` exists
+   - If not exists, inform user to run sync first and stop
 
 3. **Create HUD directory**
    ```bash
    mkdir -p .claude/hud
    ```
 
-4. **Copy built script**
+4. **Copy synced script**
    ```bash
-   cp scripts/hud.js .claude/hud/hud.js
+   cp .claude/scripts/hud.js .claude/hud/hud.js
    ```
 
 5. **Backup existing statusLine config**
