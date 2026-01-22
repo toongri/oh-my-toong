@@ -141,17 +141,6 @@ Allowed Dependencies (outer → inner only):
 | Hard to Test | Tight coupling prevents unit testing |
 | Magic Values | Unexplained literals without named constants |
 
-### Test Quality (MEDIUM)
-
-| Check | Description |
-|-------|-------------|
-| Business Logic Untested | Core domain rules have no tests |
-| Test Verifies Implementation | Tests break on refactor (brittle) |
-| Missing Edge Cases | Happy path only, no error scenarios |
-| Test Naming Unclear | Can't understand what's being tested |
-
-**Note:** Data classes (DTO, Entity with no logic) don't require tests.
-
 ---
 
 ## Signal Quality (Important)
@@ -312,7 +301,7 @@ Stage 1: Spec Compliance → Stage 2: Code Quality
 
 CRITICAL: Security, Data Integrity
 HIGH: Architecture, Design Principles (SRP, DI, Clean Architecture)
-MEDIUM: Performance, Maintainability, Test Quality
+MEDIUM: Performance, Maintainability
 LOW: Style, Suggestions
 
 Key Design Checks:
