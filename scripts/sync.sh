@@ -454,7 +454,7 @@ sync_hooks() {
     if [[ "$has_claude_hooks" == true ]]; then
         local settings_file="$target_path/.claude/settings.json"
         if [[ -f "$settings_file" ]]; then
-            local backup_base="$ROOT_DIR/scripts/.bak/$CURRENT_BACKUP_SESSION"
+            local backup_base="$ROOT_DIR/.sync-backup/$CURRENT_BACKUP_SESSION"
             local backup_path
             if [[ -z "$CURRENT_PROJECT_NAME" ]]; then
                 backup_path="$backup_base/settings.json"
@@ -784,7 +784,7 @@ main() {
     # 백업 세션 ID 생성 (전체 동기화당 하나)
     CURRENT_BACKUP_SESSION=$(generate_backup_session_id)
     log_info "백업 세션: $CURRENT_BACKUP_SESSION"
-    log_info "백업 위치: $ROOT_DIR/scripts/.bak/$CURRENT_BACKUP_SESSION/"
+    log_info "백업 위치: $ROOT_DIR/.sync-backup/$CURRENT_BACKUP_SESSION/"
 
     # 처리된 경로 추적 (projects/ YAML 우선) - Bash 3.2 호환
     local processed_paths=""

@@ -106,7 +106,7 @@ generate_backup_session_id() {
 }
 
 # 단일 카테고리를 백업
-# scripts/.bak/{session}/ 아래에 백업 저장
+# .sync-backup/{session}/ 아래에 백업 저장
 #
 # 필요한 전역 변수:
 #   - ROOT_DIR: 프로젝트 루트 경로
@@ -124,8 +124,8 @@ backup_category() {
         return 0
     fi
 
-    # scripts/.bak에 중앙 집중식 백업
-    local backup_base="$ROOT_DIR/scripts/.bak/$CURRENT_BACKUP_SESSION"
+    # .sync-backup/에 중앙 집중식 백업
+    local backup_base="$ROOT_DIR/.sync-backup/$CURRENT_BACKUP_SESSION"
     local backup_path
     if [[ -z "$CURRENT_PROJECT_NAME" ]]; then
         # 루트 yaml
@@ -157,7 +157,7 @@ backup_category() {
 cleanup_old_backups() {
     local retention_days="$1"
     local current_session="$2"
-    local backup_dir="$ROOT_DIR/scripts/.bak"
+    local backup_dir="$ROOT_DIR/.sync-backup"
 
     if [[ ! -d "$backup_dir" ]]; then
         return 0

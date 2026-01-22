@@ -8,8 +8,8 @@
 *.log
 .DS_Store
 
-# script
-scripts/.bak/
+# sync backup
+.sync-backup/
 
 # node
 node_modules/

@@ -5,8 +5,7 @@
   "type": "module",
   "main": "../hud.js",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=../hud.js && tsc --emitDeclarationOnly",
-    "build:types": "tsc --emitDeclarationOnly",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --outfile=../hud.js",
     "start": "node ../hud.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
