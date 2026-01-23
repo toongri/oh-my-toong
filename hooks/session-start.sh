@@ -5,14 +5,21 @@
 # Read stdin
 INPUT=$(cat)
 
-# Get directory
+# Get session ID and directory
+SESSION_ID=""
 DIRECTORY=""
 if command -v jq &> /dev/null; then
+  SESSION_ID=$(echo "$INPUT" | jq -r '.sessionId // .session_id // ""' 2>/dev/null)
   DIRECTORY=$(echo "$INPUT" | jq -r '.cwd // ""' 2>/dev/null)
 fi
 
 if [ -z "$DIRECTORY" ] || [ "$DIRECTORY" = "null" ]; then
   DIRECTORY=$(pwd)
+fi
+
+# Use "default" as fallback when no session ID provided
+if [ -z "$SESSION_ID" ] || [ "$SESSION_ID" = "null" ]; then
+  SESSION_ID="default"
 fi
 
 # Find project root by looking for markers and escaping .claude/sisyphus if inside
@@ -59,9 +66,9 @@ if [ -f "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state.json" ] || [ -f "$HOME/.
   fi
 fi
 
-# Check for active ralph loop state
-if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" ]; then
-  RALPH_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" 2>/dev/null)
+# Check for active ralph loop state (session-specific)
+if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" ]; then
+  RALPH_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null)
 
   if command -v jq &> /dev/null; then
     IS_ACTIVE=$(echo "$RALPH_STATE" | jq -r '.active // false' 2>/dev/null)
@@ -74,9 +81,9 @@ if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" ]; then
   fi
 fi
 
-# Check for pending verification state (oracle verification)
-if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" ]; then
-  VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null)
+# Check for pending verification state (oracle verification, session-specific)
+if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" ]; then
+  VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null)
 
   if command -v jq &> /dev/null; then
     IS_PENDING=$(echo "$VERIFICATION_STATE" | jq -r '.pending // false' 2>/dev/null)
@@ -102,8 +109,8 @@ if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" ]; then
       fi
 
       if [ "$IS_STALE" = "true" ]; then
-        # Remove stale verification state
-        rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json"
+        # Remove stale verification state (session-specific)
+        rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json"
         MESSAGES="$MESSAGES<session-restore>\n\n[STALE VERIFICATION STATE CLEANED]\n\nA verification state older than 24 hours was found and removed.\nIf you need to continue verification, please restart the process.\n\n</session-restore>\n\n---\n\n"
       else
         FEEDBACK_SECTION=""

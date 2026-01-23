@@ -8,15 +8,15 @@ The Ralph Loop has been cancelled. You MUST now execute the full cleanup procedu
 
 ## MANDATORY ACTION
 
-Execute these commands to fully cancel the Ralph Loop and clean up all associated state:
+Execute these commands to fully cancel the Ralph Loop and clean up all associated state (for all sessions):
 
 ```bash
 # Navigate to state directory
 cd .claude/sisyphus
 
-# Remove ralph state files
-rm -f ralph-state.json
-rm -f ralph-verification.json
+# Remove all session-specific ralph state files
+rm -f ralph-state-*.json 2>/dev/null || true
+rm -f ralph-verification-*.json 2>/dev/null || true
 
 # Check if ultrawork is linked to ralph and clean up if so
 if [ -f ultrawork-state.json ]; then
@@ -33,9 +33,9 @@ fi
 After running the cleanup commands, verify the cancellation was successful:
 
 ```bash
-# Should return "file not found" or empty for all of these
-ls -la .claude/sisyphus/ralph-state.json 2>/dev/null || echo "ralph-state.json removed"
-ls -la .claude/sisyphus/ralph-verification.json 2>/dev/null || echo "ralph-verification.json removed"
+# Should return no files for both patterns
+ls -la .claude/sisyphus/ralph-state-*.json 2>/dev/null || echo "ralph-state files removed"
+ls -la .claude/sisyphus/ralph-verification-*.json 2>/dev/null || echo "ralph-verification files removed"
 ```
 
 ## POST-CANCELLATION

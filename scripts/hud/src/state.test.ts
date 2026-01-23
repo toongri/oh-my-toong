@@ -18,7 +18,7 @@ describe('state readers', () => {
   });
 
   describe('readRalphState', () => {
-    it('should read ralph state from project-local .claude/sisyphus/', async () => {
+    it('should read session-specific ralph state from project-local .claude/sisyphus/', async () => {
       const state = {
         active: true,
         iteration: 2,
@@ -29,9 +29,10 @@ describe('state readers', () => {
         linked_ultrawork: false,
       };
 
-      await writeFile(join(sisyphusDir, 'ralph-state.json'), JSON.stringify(state));
+      // Session-specific file: ralph-state-test-session.json
+      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(state));
 
-      const result = await readRalphState(projectDir);
+      const result = await readRalphState(projectDir, 'test-session');
 
       expect(result).not.toBeNull();
       expect(result?.active).toBe(true);
@@ -39,17 +40,53 @@ describe('state readers', () => {
       expect(result?.max_iterations).toBe(5);
     });
 
-    it('should fall back to global state when project-local file does not exist', async () => {
-      // This test verifies the fallback behavior - when no project-local file exists,
-      // it falls back to ~/.claude/ralph-state.json if it exists
+    it('should use default session ID when not provided', async () => {
+      const state = {
+        active: true,
+        iteration: 3,
+        max_iterations: 10,
+        completion_promise: 'DONE',
+        prompt: 'Default session prompt',
+        started_at: '2024-01-22T10:00:00Z',
+        linked_ultrawork: false,
+      };
+
+      // Default session file: ralph-state-default.json
+      await writeFile(join(sisyphusDir, 'ralph-state-default.json'), JSON.stringify(state));
+
+      const result = await readRalphState(projectDir);
+
+      expect(result).not.toBeNull();
+      expect(result?.iteration).toBe(3);
+    });
+
+    it('should return null when session-specific file does not exist', async () => {
       const nonExistentDir = join(testDir, 'nonexistent');
       await mkdir(nonExistentDir, { recursive: true });
 
-      const result = await readRalphState(nonExistentDir);
+      const result = await readRalphState(nonExistentDir, 'non-existent-session');
 
-      // Result depends on whether global file exists
-      // We just verify the function doesn't throw
-      expect(result === null || typeof result === 'object').toBe(true);
+      expect(result).toBeNull();
+    });
+
+    it('should NOT read other sessions ralph state files', async () => {
+      const state = {
+        active: true,
+        iteration: 5,
+        max_iterations: 10,
+        completion_promise: 'DONE',
+        prompt: 'Other session task',
+        started_at: '2024-01-22T10:00:00Z',
+        linked_ultrawork: false,
+      };
+
+      // Create ralph state for a different session
+      await writeFile(join(sisyphusDir, 'ralph-state-other-session.json'), JSON.stringify(state));
+
+      // Try to read with a different session ID
+      const result = await readRalphState(projectDir, 'my-session');
+
+      expect(result).toBeNull();
     });
   });
 
@@ -74,7 +111,7 @@ describe('state readers', () => {
   });
 
   describe('readRalphVerification', () => {
-    it('should read ralph verification from project-local .claude/sisyphus/', async () => {
+    it('should read session-specific ralph verification from project-local .claude/sisyphus/', async () => {
       const verification = {
         pending: true,
         verification_attempts: 1,
@@ -84,13 +121,33 @@ describe('state readers', () => {
         created_at: new Date().toISOString(),
       };
 
-      await writeFile(join(sisyphusDir, 'ralph-verification.json'), JSON.stringify(verification));
+      // Session-specific file: ralph-verification-test-session.json
+      await writeFile(join(sisyphusDir, 'ralph-verification-test-session.json'), JSON.stringify(verification));
 
-      const result = await readRalphVerification(projectDir);
+      const result = await readRalphVerification(projectDir, 'test-session');
 
       expect(result).not.toBeNull();
       expect(result?.pending).toBe(true);
       expect(result?.verification_attempts).toBe(1);
+    });
+
+    it('should use default session ID when not provided', async () => {
+      const verification = {
+        pending: true,
+        verification_attempts: 2,
+        max_verification_attempts: 3,
+        original_task: 'Default session task',
+        completion_claim: 'Task complete',
+        created_at: new Date().toISOString(),
+      };
+
+      // Default session file: ralph-verification-default.json
+      await writeFile(join(sisyphusDir, 'ralph-verification-default.json'), JSON.stringify(verification));
+
+      const result = await readRalphVerification(projectDir);
+
+      expect(result).not.toBeNull();
+      expect(result?.verification_attempts).toBe(2);
     });
 
     it('should return null for stale verification (>24h old)', async () => {
@@ -109,9 +166,10 @@ describe('state readers', () => {
       const staleDir = join(testDir, 'stale-project');
       const staleSisyphusDir = join(staleDir, '.claude', 'sisyphus');
       await mkdir(staleSisyphusDir, { recursive: true });
-      await writeFile(join(staleSisyphusDir, 'ralph-verification.json'), JSON.stringify(verification));
+      // Session-specific stale file
+      await writeFile(join(staleSisyphusDir, 'ralph-verification-stale-session.json'), JSON.stringify(verification));
 
-      const result = await readRalphVerification(staleDir);
+      const result = await readRalphVerification(staleDir, 'stale-session');
 
       expect(result).toBeNull();
     });

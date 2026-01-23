@@ -4,9 +4,9 @@ import type { TranscriptResult } from './transcript.js';
 
 // Mock modules before imports
 const mockReadStdin = jest.fn<() => Promise<StdinInput | null>>();
-const mockReadRalphState = jest.fn<(cwd: string) => Promise<RalphState | null>>();
+const mockReadRalphState = jest.fn<(cwd: string, sessionId?: string) => Promise<RalphState | null>>();
 const mockReadUltraworkState = jest.fn<(cwd: string) => Promise<UltraworkState | null>>();
-const mockReadRalphVerification = jest.fn<(cwd: string) => Promise<RalphVerification | null>>();
+const mockReadRalphVerification = jest.fn<(cwd: string, sessionId?: string) => Promise<RalphVerification | null>>();
 // readTodos removed - todos now come from transcript only for session isolation
 const mockReadBackgroundTasks = jest.fn<() => Promise<number>>();
 const mockCalculateSessionDuration = jest.fn<(startedAt: Date | null) => number | null>();
@@ -130,9 +130,9 @@ describe('main', () => {
 
       await main();
 
-      expect(mockReadRalphState).toHaveBeenCalledWith('/my/project');
+      expect(mockReadRalphState).toHaveBeenCalledWith('/my/project', 'test-session');
       expect(mockReadUltraworkState).toHaveBeenCalledWith('/my/project');
-      expect(mockReadRalphVerification).toHaveBeenCalledWith('/my/project');
+      expect(mockReadRalphVerification).toHaveBeenCalledWith('/my/project', 'test-session');
       // Note: getInProgressTodo now takes transcript todos (session isolation)
       expect(mockGetInProgressTodo).toHaveBeenCalledWith([]);
     });

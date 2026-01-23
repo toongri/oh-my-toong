@@ -204,23 +204,23 @@ test_max_iteration_message_includes_recommended_actions() {
 }
 
 test_max_iteration_cleans_ralph_state() {
-    # The max iteration handler should clean up ralph state
+    # The max iteration handler should clean up ralph state (session-specific)
     # The rm commands are before the MAX ITERATIONS message, need more context
-    if grep -B 15 -A 5 "MAX ITERATIONS" "$HOOKS_DIR/persistent-mode.sh" | grep -q 'rm -f.*ralph-state.json'; then
+    if grep -B 15 -A 5 "MAX ITERATIONS" "$HOOKS_DIR/persistent-mode.sh" | grep -q 'rm -f.*ralph-state-\${SESSION_ID}'; then
         return 0
     else
-        echo "ASSERTION FAILED: max iteration should clean ralph-state.json"
+        echo "ASSERTION FAILED: max iteration should clean ralph-state-{SESSION_ID}.json"
         return 1
     fi
 }
 
 test_max_iteration_cleans_verification_state() {
-    # The max iteration handler should clean up verification state
+    # The max iteration handler should clean up verification state (session-specific)
     # The rm commands are before the MAX ITERATIONS message, need more context
-    if grep -B 15 -A 5 "MAX ITERATIONS" "$HOOKS_DIR/persistent-mode.sh" | grep -q 'rm -f.*ralph-verification.json'; then
+    if grep -B 15 -A 5 "MAX ITERATIONS" "$HOOKS_DIR/persistent-mode.sh" | grep -q 'rm -f.*ralph-verification-\${SESSION_ID}'; then
         return 0
     else
-        echo "ASSERTION FAILED: max iteration should clean ralph-verification.json"
+        echo "ASSERTION FAILED: max iteration should clean ralph-verification-{SESSION_ID}.json"
         return 1
     fi
 }
@@ -292,8 +292,8 @@ test_max_iteration_script_behavior() {
     # Setup: Create project marker so get_project_root can find the root
     mkdir -p "$TEST_TMP_DIR/.git"
 
-    # Setup: Create ralph state at max iteration
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json" << 'EOF'
+    # Setup: Create ralph state at max iteration (session-specific with default session)
+    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" << 'EOF'
 {
   "active": true,
   "iteration": 10,
@@ -326,20 +326,20 @@ EOF
 }
 EOF
 
-    # Run the script (use "cwd" key, not "directory")
+    # Run the script (use "cwd" key, not "directory", no sessionId = default)
     local output
     output=$(echo '{"cwd": "'"$TEST_TMP_DIR"'"}' | "$HOOKS_DIR/persistent-mode.sh" 2>&1) || true
 
     # Verify output contains max iteration message
     if echo "$output" | grep -q "MAX ITERATIONS"; then
-        # Also verify the state files were cleaned up
-        if [[ ! -f "$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json" ]] && \
+        # Also verify the state files were cleaned up (session-specific)
+        if [[ ! -f "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" ]] && \
            [[ ! -f "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state.json" ]] && \
            [[ ! -f "$HOME/.claude/ultrawork-state.json" ]]; then
             return 0
         else
             echo "ASSERTION FAILED: State files should be cleaned up after max iterations"
-            [[ -f "$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json" ]] && echo "  ralph-state.json still exists"
+            [[ -f "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" ]] && echo "  ralph-state-default.json still exists"
             [[ -f "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state.json" ]] && echo "  local ultrawork-state.json still exists"
             [[ -f "$HOME/.claude/ultrawork-state.json" ]] && echo "  global ultrawork-state.json still exists"
             return 1
@@ -352,6 +352,88 @@ EOF
 }
 
 # =============================================================================
+# Tests: Session-based ralph state file reading
+# =============================================================================
+
+test_session_specific_ralph_state_reading() {
+    # Setup: Create project marker
+    mkdir -p "$TEST_TMP_DIR/.git"
+
+    # Create session-specific ralph state file
+    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-test-session-789.json" << 'EOF'
+{
+  "active": true,
+  "iteration": 3,
+  "max_iterations": 10,
+  "completion_promise": "DONE",
+  "prompt": "session specific task"
+}
+EOF
+
+    # Run with sessionId in input
+    local output
+    output=$(echo '{"cwd": "'"$TEST_TMP_DIR"'", "sessionId": "test-session-789"}' | "$HOOKS_DIR/persistent-mode.sh" 2>&1) || true
+
+    # Verify output contains ralph loop continuation (iteration increases)
+    if echo "$output" | grep -q "RALPH LOOP"; then
+        return 0
+    else
+        echo "ASSERTION FAILED: Should read session-specific ralph state"
+        echo "  Output: ${output:0:500}"
+        return 1
+    fi
+}
+
+test_session_specific_ralph_state_ignores_other_sessions() {
+    # Setup: Create project marker
+    mkdir -p "$TEST_TMP_DIR/.git"
+
+    # Create ralph state file for DIFFERENT session
+    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-other-session.json" << 'EOF'
+{
+  "active": true,
+  "iteration": 5,
+  "max_iterations": 10,
+  "completion_promise": "DONE",
+  "prompt": "other session task"
+}
+EOF
+
+    # Run with different sessionId
+    local output
+    output=$(echo '{"cwd": "'"$TEST_TMP_DIR"'", "sessionId": "my-session"}' | "$HOOKS_DIR/persistent-mode.sh" 2>&1) || true
+
+    # Should NOT contain ralph loop (no state for this session)
+    if echo "$output" | grep -q "RALPH LOOP"; then
+        echo "ASSERTION FAILED: Should NOT read other session's ralph state"
+        return 1
+    else
+        return 0
+    fi
+}
+
+test_ralph_verification_uses_session_id() {
+    # Verify persistent-mode.sh reads ralph-verification-{SESSION_ID}.json
+    if grep -q 'ralph-verification-\${SESSION_ID' "$HOOKS_DIR/persistent-mode.sh" || \
+       grep -q 'ralph-verification-.*SESSION_ID' "$HOOKS_DIR/persistent-mode.sh"; then
+        return 0
+    else
+        echo "ASSERTION FAILED: persistent-mode.sh should use session-specific ralph-verification file"
+        return 1
+    fi
+}
+
+test_cleanup_ralph_state_uses_session_id() {
+    # Verify cleanup_ralph_state function uses session-specific paths
+    if grep -A 5 'cleanup_ralph_state\(\)' "$HOOKS_DIR/persistent-mode.sh" | grep -q 'ralph-state-\${SESSION_ID'; then
+        return 0
+    else
+        echo "ASSERTION FAILED: cleanup_ralph_state should use session-specific file"
+        return 1
+    fi
+}
+
+# =============================================================================
 # Main Test Runner
 # =============================================================================
 
@@ -359,6 +441,12 @@ main() {
     echo "=========================================="
     echo "Persistent Mode Hook Tests"
     echo "=========================================="
+
+    # Session-based ralph state tests
+    run_test test_session_specific_ralph_state_reading
+    run_test test_session_specific_ralph_state_ignores_other_sessions
+    run_test test_ralph_verification_uses_session_id
+    run_test test_cleanup_ralph_state_uses_session_id
 
     # cleanup_linked_ultrawork function tests
     run_test test_cleanup_linked_ultrawork_function_exists

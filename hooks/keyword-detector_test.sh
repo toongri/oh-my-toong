@@ -206,17 +206,17 @@ test_ralph_keyword_not_detected_in_inline_code() {
 # =============================================================================
 
 test_ralph_creates_ralph_state_json() {
-    # When ralph keyword detected, should create ralph-state.json
+    # When ralph keyword detected, should create ralph-state-default.json
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    assert_file_exists "$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json" "Should create ralph-state.json"
+    assert_file_exists "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" "Should create ralph-state-default.json"
 }
 
 test_ralph_state_has_correct_structure() {
-    # ralph-state.json should have the required fields
+    # ralph-state-default.json should have the required fields
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json"
+    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json"
 
     assert_json_field "$state_file" ".active" "true" "active should be true"
     assert_json_field "$state_file" ".iteration" "1" "iteration should be 1"
@@ -225,10 +225,10 @@ test_ralph_state_has_correct_structure() {
 }
 
 test_ralph_state_contains_prompt() {
-    # ralph-state.json should contain the original prompt
+    # ralph-state-default.json should contain the original prompt
     run_keyword_detector "ralph complete this task" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json"
+    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json"
 
     # Check prompt is not empty
     local prompt=$(jq -r ".prompt" "$state_file" 2>/dev/null)
@@ -240,10 +240,10 @@ test_ralph_state_contains_prompt() {
 }
 
 test_ralph_state_has_timestamp() {
-    # ralph-state.json should have started_at timestamp
+    # ralph-state-default.json should have started_at timestamp
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json"
+    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json"
 
     local timestamp=$(jq -r ".started_at" "$state_file" 2>/dev/null)
     if [[ -z "$timestamp" || "$timestamp" == "null" ]]; then
@@ -254,10 +254,10 @@ test_ralph_state_has_timestamp() {
 }
 
 test_ralph_state_has_linked_ultrawork_true() {
-    # ralph-state.json should have linked_ultrawork: true
+    # ralph-state-default.json should have linked_ultrawork: true
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json"
+    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json"
 
     assert_json_field "$state_file" ".linked_ultrawork" "true" "linked_ultrawork should be true"
 }
@@ -326,8 +326,8 @@ test_ralph_before_ultrawork_in_detection_order() {
     # This is tested by the priority test above, but here we verify state files
     run_keyword_detector "ralph ultrawork complete" "$TEST_TMP_DIR" > /dev/null
 
-    # Should have ralph-state.json
-    assert_file_exists "$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json" "ralph-state should exist"
+    # Should have ralph-state-default.json
+    assert_file_exists "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" "ralph-state should exist"
 
     # ultrawork-state.json should have linked_to_ralph flag (created by ralph, not by ultrawork keyword)
     local state_file="$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state.json"

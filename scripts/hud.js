@@ -52,14 +52,14 @@ async function findStateFile(cwd, filename) {
   }
   return null;
 }
-async function readRalphState(cwd) {
-  return findStateFile(cwd, "ralph-state.json");
+async function readRalphState(cwd, sessionId = "default") {
+  return findStateFile(cwd, `ralph-state-${sessionId}.json`);
 }
 async function readUltraworkState(cwd) {
   return findStateFile(cwd, "ultrawork-state.json");
 }
-async function readRalphVerification(cwd) {
-  const verification = await findStateFile(cwd, "ralph-verification.json");
+async function readRalphVerification(cwd, sessionId = "default") {
+  const verification = await findStateFile(cwd, `ralph-verification-${sessionId}.json`);
   if (verification?.created_at) {
     const createdAt = new Date(verification.created_at).getTime();
     const now = Date.now();
@@ -461,6 +461,7 @@ async function main() {
       return;
     }
     const cwd = input.cwd || process.cwd();
+    const sessionId = input.session_id || "default";
     const [
       ralph,
       ultrawork,
@@ -470,9 +471,9 @@ async function main() {
       rateLimits,
       thinkingActive
     ] = await Promise.all([
-      readRalphState(cwd),
+      readRalphState(cwd, sessionId),
       readUltraworkState(cwd),
-      readRalphVerification(cwd),
+      readRalphVerification(cwd, sessionId),
       readBackgroundTasks(),
       input.transcript_path ? parseTranscript(input.transcript_path) : Promise.resolve({ runningAgents: 0, activeSkill: null, agents: [], sessionStartedAt: null, todos: [] }),
       fetchRateLimits(),

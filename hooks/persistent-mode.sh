@@ -19,6 +19,11 @@ if [ -z "$DIRECTORY" ]; then
   DIRECTORY=$(pwd)
 fi
 
+# Use "default" as fallback when no session ID provided
+if [ -z "$SESSION_ID" ] || [ "$SESSION_ID" = "null" ]; then
+  SESSION_ID="default"
+fi
+
 # Find project root by looking for markers and escaping .claude/sisyphus if inside
 get_project_root() {
   local dir="$1"
@@ -93,16 +98,16 @@ elif [ -f "$HOME/.claude/ultrawork-state.json" ]; then
   ULTRAWORK_STATE=$(cat "$HOME/.claude/ultrawork-state.json" 2>/dev/null)
 fi
 
-# Check for active ralph loop
+# Check for active ralph loop (session-specific)
 RALPH_STATE=""
-if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" ]; then
-  RALPH_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" 2>/dev/null)
+if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" ]; then
+  RALPH_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null)
 fi
 
-# Check for verification state (oracle verification)
+# Check for verification state (oracle verification, session-specific)
 VERIFICATION_STATE=""
-if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" ]; then
-  VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null)
+if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" ]; then
+  VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null)
 fi
 
 # =============================================================================
@@ -186,11 +191,11 @@ detect_oracle_rejection() {
   return 1
 }
 
-# Create ralph-verification.json when promise detected
+# Create ralph-verification-{SESSION_ID}.json when promise detected
 create_ralph_verification() {
   local original_task="$1"
   local completion_claim="${2:-DONE}"
-  local verification_file="$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json"
+  local verification_file="$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json"
   local timestamp
   timestamp=$(date -Iseconds 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z)
 
@@ -207,10 +212,10 @@ create_ralph_verification() {
 VERIFICATION_EOF
 }
 
-# Clean up all ralph state files
+# Clean up all ralph state files (session-specific)
 cleanup_ralph_state() {
-  rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" 2>/dev/null
-  rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null
+  rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null
+  rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null
 }
 
 # =============================================================================
@@ -280,7 +285,7 @@ if [ -n "$RALPH_STATE" ]; then
     if detect_completion_promise; then
       if [ -z "$VERIFICATION_STATE" ]; then
         create_ralph_verification "$PROMPT" "$PROMISE"
-        VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null)
+        VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null)
       fi
     fi
 
@@ -308,13 +313,13 @@ EOF
         fi
 
         # Increment verification attempts
-        echo "$VERIFICATION_STATE" | jq ".verification_attempts = $NEXT_ATTEMPT" > "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null
+        echo "$VERIFICATION_STATE" | jq ".verification_attempts = $NEXT_ATTEMPT" > "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null
 
         # Check for oracle rejection and extract feedback
         REJECTION_FEEDBACK=""
         if REJECTION_FEEDBACK=$(detect_oracle_rejection); then
           # Update verification state with feedback
-          echo "$VERIFICATION_STATE" | jq ".verification_attempts = $NEXT_ATTEMPT | .oracle_feedback = \"$REJECTION_FEEDBACK\"" > "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null
+          echo "$VERIFICATION_STATE" | jq ".verification_attempts = $NEXT_ATTEMPT | .oracle_feedback = \"$REJECTION_FEEDBACK\"" > "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null
         fi
 
         FEEDBACK_SECTION=""
@@ -330,9 +335,9 @@ EOF
     fi
 
     if [ "$ITERATION" -ge "$MAX_ITER" ]; then
-      # Max iterations reached - clean up ALL state files
-      rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json"
-      rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json"
+      # Max iterations reached - clean up ALL state files (session-specific)
+      rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json"
+      rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json"
 
       # Clean linked ultrawork
       cleanup_linked_ultrawork "$PROJECT_ROOT"
@@ -349,7 +354,7 @@ EOF
 
     # Increment iteration
     NEW_ITER=$((ITERATION + 1))
-    echo "$RALPH_STATE" | jq ".iteration = $NEW_ITER" > "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" 2>/dev/null
+    echo "$RALPH_STATE" | jq ".iteration = $NEW_ITER" > "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null
 
     cat << EOF
 {"continue": false, "reason": "<ralph-loop-continuation>\n\n[RALPH LOOP - ITERATION $NEW_ITER/$MAX_ITER]\n\nYour previous attempt did not output the completion promise. The work is NOT done yet.\n\nCRITICAL INSTRUCTIONS:\n1. Review your progress and the original task\n2. Check your todo list - are ALL items marked complete?\n3. Continue from where you left off\n4. When FULLY complete, output: <promise>$PROMISE</promise>\n5. Do NOT stop until the task is truly done\n\nOriginal task: $PROMPT\n\n</ralph-loop-continuation>\n\n---\n"}

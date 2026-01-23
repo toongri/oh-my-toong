@@ -26,6 +26,7 @@ export async function main(): Promise<void> {
     }
 
     const cwd = input.cwd || process.cwd();
+    const sessionId = input.session_id || 'default';
 
     // Gather data from all sources in parallel
     const [
@@ -37,9 +38,9 @@ export async function main(): Promise<void> {
       rateLimits,
       thinkingActive,
     ] = await Promise.all([
-      readRalphState(cwd),
+      readRalphState(cwd, sessionId),
       readUltraworkState(cwd),
-      readRalphVerification(cwd),
+      readRalphVerification(cwd, sessionId),
       readBackgroundTasks(),
       input.transcript_path
         ? parseTranscript(input.transcript_path)

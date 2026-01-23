@@ -5,13 +5,19 @@
 # Read stdin (JSON input from Claude Code)
 INPUT=$(cat)
 
-# Extract directory from input
+# Extract session ID and directory from input
+SESSION_ID=""
 DIRECTORY=""
 if command -v jq &> /dev/null; then
+  SESSION_ID=$(echo "$INPUT" | jq -r '.sessionId // .session_id // ""' 2>/dev/null)
   DIRECTORY=$(echo "$INPUT" | jq -r '.cwd // ""' 2>/dev/null)
 fi
 if [ -z "$DIRECTORY" ] || [ "$DIRECTORY" = "null" ]; then
   DIRECTORY=$(pwd)
+fi
+# Use "default" as fallback when no session ID provided
+if [ -z "$SESSION_ID" ] || [ "$SESSION_ID" = "null" ]; then
+  SESSION_ID="default"
 fi
 
 # Find project root by looking for markers and escaping .claude/sisyphus if inside
@@ -70,6 +76,7 @@ PROMPT_NO_CODE=$(echo "$PROMPT" | tr '\n' '\r' | sed 's/```[^`]*```//g' | sed 's
 PROMPT_LOWER=$(echo "$PROMPT_NO_CODE" | tr '[:upper:]' '[:lower:]')
 
 # Function to create ralph state file
+# Uses SESSION_ID for session-specific file naming
 create_ralph_state() {
   local dir="$1"
   local prompt="$2"
@@ -80,7 +87,7 @@ create_ralph_state() {
 
   # Create local .claude/sisyphus directory
   mkdir -p "$dir/.claude/sisyphus" 2>/dev/null
-  cat > "$dir/.claude/sisyphus/ralph-state.json" 2>/dev/null << EOF
+  cat > "$dir/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null << EOF
 {
   "active": true,
   "iteration": 1,
@@ -94,7 +101,7 @@ EOF
 
   # Create global ~/.claude directory as fallback
   mkdir -p "$HOME/.claude" 2>/dev/null
-  cat > "$HOME/.claude/ralph-state.json" 2>/dev/null << EOF
+  cat > "$HOME/.claude/ralph-state-${SESSION_ID}.json" 2>/dev/null << EOF
 {
   "active": true,
   "iteration": 1,

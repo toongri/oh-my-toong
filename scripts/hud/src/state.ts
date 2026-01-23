@@ -68,16 +68,16 @@ async function findStateFile<T>(cwd: string, filename: string): Promise<T | null
   return null;
 }
 
-export async function readRalphState(cwd: string): Promise<RalphState | null> {
-  return findStateFile<RalphState>(cwd, 'ralph-state.json');
+export async function readRalphState(cwd: string, sessionId: string = 'default'): Promise<RalphState | null> {
+  return findStateFile<RalphState>(cwd, `ralph-state-${sessionId}.json`);
 }
 
 export async function readUltraworkState(cwd: string): Promise<UltraworkState | null> {
   return findStateFile<UltraworkState>(cwd, 'ultrawork-state.json');
 }
 
-export async function readRalphVerification(cwd: string): Promise<RalphVerification | null> {
-  const verification = await findStateFile<RalphVerification>(cwd, 'ralph-verification.json');
+export async function readRalphVerification(cwd: string, sessionId: string = 'default'): Promise<RalphVerification | null> {
+  const verification = await findStateFile<RalphVerification>(cwd, `ralph-verification-${sessionId}.json`);
 
   // Check if stale (>24h)
   if (verification?.created_at) {
