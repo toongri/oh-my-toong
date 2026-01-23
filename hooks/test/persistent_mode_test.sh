@@ -289,6 +289,9 @@ test_max_iteration_returns_continue_true() {
 # =============================================================================
 
 test_max_iteration_script_behavior() {
+    # Setup: Create project marker so get_project_root can find the root
+    mkdir -p "$TEST_TMP_DIR/.git"
+
     # Setup: Create ralph state at max iteration
     cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json" << 'EOF'
 {
@@ -323,9 +326,9 @@ EOF
 }
 EOF
 
-    # Run the script
+    # Run the script (use "cwd" key, not "directory")
     local output
-    output=$(echo '{"directory": "'"$TEST_TMP_DIR"'"}' | "$HOOKS_DIR/persistent-mode.sh" 2>&1) || true
+    output=$(echo '{"cwd": "'"$TEST_TMP_DIR"'"}' | "$HOOKS_DIR/persistent-mode.sh" 2>&1) || true
 
     # Verify output contains max iteration message
     if echo "$output" | grep -q "MAX ITERATIONS"; then

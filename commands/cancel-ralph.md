@@ -26,10 +26,6 @@ if [ -f ultrawork-state.json ]; then
     rm -f ~/.claude/ultrawork-state.json
   fi
 fi
-
-# Clean temp files used for todo attempt tracking
-rm -f /tmp/oh-my-toong-todo-attempts-*
-rm -f /tmp/oh-my-toong-todo-count-*
 ```
 
 ## VERIFICATION
@@ -48,6 +44,5 @@ After executing the cleanup:
 - You are free to stop working
 - The persistent mode hook will no longer force continuation
 - All verification states have been cleared
-- Todo attempt counters have been reset
 
 If you want to start a new loop later, use `/ralph "task description"`.

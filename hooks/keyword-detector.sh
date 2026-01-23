@@ -14,6 +14,30 @@ if [ -z "$DIRECTORY" ] || [ "$DIRECTORY" = "null" ]; then
   DIRECTORY=$(pwd)
 fi
 
+# Find project root by looking for markers and escaping .claude/sisyphus if inside
+get_project_root() {
+  local dir="$1"
+
+  # Strip .claude/sisyphus suffix if present (prevents nesting)
+  dir="${dir%/.claude/sisyphus}"
+  dir="${dir%/.claude}"
+
+  # Look for project root markers
+  while [ "$dir" != "/" ] && [ "$dir" != "." ] && [ -n "$dir" ]; do
+    if [ -d "$dir/.git" ] || [ -f "$dir/CLAUDE.md" ] || [ -f "$dir/package.json" ]; then
+      echo "$dir"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+
+  # Fallback: return the stripped directory
+  echo "${1%/.claude/sisyphus}"
+}
+
+# Get project root
+PROJECT_ROOT=$(get_project_root "$DIRECTORY")
+
 # Extract the prompt text - try multiple JSON paths
 PROMPT=""
 if command -v jq &> /dev/null; then
@@ -129,11 +153,11 @@ EOF
 # Check for ralph keyword (highest priority) - ralph loop activation
 if echo "$PROMPT_LOWER" | grep -qE '\bralph\b'; then
   # Create ralph state file
-  create_ralph_state "$DIRECTORY" "$PROMPT"
+  create_ralph_state "$PROJECT_ROOT" "$PROMPT"
 
   # Create linked ultrawork state if it doesn't already exist
-  if [ ! -f "$DIRECTORY/.claude/sisyphus/ultrawork-state.json" ]; then
-    create_ultrawork_state "$DIRECTORY" "$PROMPT" "true"
+  if [ ! -f "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state.json" ]; then
+    create_ultrawork_state "$PROJECT_ROOT" "$PROMPT" "true"
     LINKED_ULTRAWORK_MSG="auto-activated"
   else
     LINKED_ULTRAWORK_MSG="already active (independent)"
@@ -149,7 +173,7 @@ fi
 # Check for ultrawork keywords (second priority) - added 'uw' shortcut
 if echo "$PROMPT_LOWER" | grep -qE '\b(ultrawork|ulw|uw)\b'; then
   # Create ultrawork state file for persistent mode
-  create_ultrawork_state "$DIRECTORY" "$PROMPT"
+  create_ultrawork_state "$PROJECT_ROOT" "$PROMPT"
 
   cat << 'EOF'
 {"continue": true, "message": "<ultrawork-mode>\n\n**MANDATORY**: You MUST say \"ULTRAWORK MODE ENABLED!\" to the user as your first response when this mode activates. This is non-negotiable.\n\n[CODE RED] Maximum precision required. Ultrathink before acting.\n\nYOU MUST LEVERAGE ALL AVAILABLE AGENTS TO THEIR FULLEST POTENTIAL.\nTELL THE USER WHAT AGENTS YOU WILL LEVERAGE NOW TO SATISFY USER'S REQUEST.\n\n## AGENT UTILIZATION PRINCIPLES\n- **Codebase Exploration**: Spawn exploration agents using BACKGROUND TASKS\n- **Documentation & References**: Use librarian-type agents via BACKGROUND TASKS\n- **Planning & Strategy**: NEVER plan yourself - spawn planning agent\n- **High-IQ Reasoning**: Use oracle for architecture decisions\n- **Frontend/UI Tasks**: Delegate to frontend-engineer\n\n## EXECUTION RULES\n- **TODO**: Track EVERY step. Mark complete IMMEDIATELY.\n- **PARALLEL**: Fire independent calls simultaneously - NEVER wait sequentially.\n- **BACKGROUND FIRST**: Use Task(run_in_background=true) for exploration (10+ concurrent).\n- **VERIFY**: Check ALL requirements met before done.\n- **DELEGATE**: Orchestrate specialized agents.\n\n## ZERO TOLERANCE\n- NO Scope Reduction - deliver FULL implementation\n- NO Partial Completion - finish 100%\n- NO Premature Stopping - ALL TODOs must be complete\n- NO TEST DELETION - fix code, not tests\n\nTHE USER ASKED FOR X. DELIVER EXACTLY X.\n\n</ultrawork-mode>\n\n---\n"}

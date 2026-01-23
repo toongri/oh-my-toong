@@ -15,12 +15,36 @@ if [ -z "$DIRECTORY" ] || [ "$DIRECTORY" = "null" ]; then
   DIRECTORY=$(pwd)
 fi
 
+# Find project root by looking for markers and escaping .claude/sisyphus if inside
+get_project_root() {
+  local dir="$1"
+
+  # Strip .claude/sisyphus suffix if present (prevents nesting)
+  dir="${dir%/.claude/sisyphus}"
+  dir="${dir%/.claude}"
+
+  # Look for project root markers
+  while [ "$dir" != "/" ] && [ "$dir" != "." ] && [ -n "$dir" ]; do
+    if [ -d "$dir/.git" ] || [ -f "$dir/CLAUDE.md" ] || [ -f "$dir/package.json" ]; then
+      echo "$dir"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+
+  # Fallback: return the stripped directory
+  echo "${1%/.claude/sisyphus}"
+}
+
+# Get project root
+PROJECT_ROOT=$(get_project_root "$DIRECTORY")
+
 MESSAGES=""
 
 # Check for active ultrawork state
-if [ -f "$DIRECTORY/.claude/sisyphus/ultrawork-state.json" ] || [ -f "$HOME/.claude/ultrawork-state.json" ]; then
-  if [ -f "$DIRECTORY/.claude/sisyphus/ultrawork-state.json" ]; then
-    ULTRAWORK_STATE=$(cat "$DIRECTORY/.claude/sisyphus/ultrawork-state.json" 2>/dev/null)
+if [ -f "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state.json" ] || [ -f "$HOME/.claude/ultrawork-state.json" ]; then
+  if [ -f "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state.json" ]; then
+    ULTRAWORK_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state.json" 2>/dev/null)
   else
     ULTRAWORK_STATE=$(cat "$HOME/.claude/ultrawork-state.json" 2>/dev/null)
   fi
@@ -36,8 +60,8 @@ if [ -f "$DIRECTORY/.claude/sisyphus/ultrawork-state.json" ] || [ -f "$HOME/.cla
 fi
 
 # Check for active ralph loop state
-if [ -f "$DIRECTORY/.claude/sisyphus/ralph-state.json" ]; then
-  RALPH_STATE=$(cat "$DIRECTORY/.claude/sisyphus/ralph-state.json" 2>/dev/null)
+if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" ]; then
+  RALPH_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" 2>/dev/null)
 
   if command -v jq &> /dev/null; then
     IS_ACTIVE=$(echo "$RALPH_STATE" | jq -r '.active // false' 2>/dev/null)
@@ -51,8 +75,8 @@ if [ -f "$DIRECTORY/.claude/sisyphus/ralph-state.json" ]; then
 fi
 
 # Check for pending verification state (oracle verification)
-if [ -f "$DIRECTORY/.claude/sisyphus/ralph-verification.json" ]; then
-  VERIFICATION_STATE=$(cat "$DIRECTORY/.claude/sisyphus/ralph-verification.json" 2>/dev/null)
+if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" ]; then
+  VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null)
 
   if command -v jq &> /dev/null; then
     IS_PENDING=$(echo "$VERIFICATION_STATE" | jq -r '.pending // false' 2>/dev/null)
@@ -79,7 +103,7 @@ if [ -f "$DIRECTORY/.claude/sisyphus/ralph-verification.json" ]; then
 
       if [ "$IS_STALE" = "true" ]; then
         # Remove stale verification state
-        rm -f "$DIRECTORY/.claude/sisyphus/ralph-verification.json"
+        rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json"
         MESSAGES="$MESSAGES<session-restore>\n\n[STALE VERIFICATION STATE CLEANED]\n\nA verification state older than 24 hours was found and removed.\nIf you need to continue verification, please restart the process.\n\n</session-restore>\n\n---\n\n"
       else
         FEEDBACK_SECTION=""
@@ -108,7 +132,7 @@ if [ -d "$TODOS_DIR" ]; then
 fi
 
 # Check for incomplete todos in project directory
-for todo_path in "$DIRECTORY/.claude/sisyphus/todos.json" "$DIRECTORY/.claude/todos.json"; do
+for todo_path in "$PROJECT_ROOT/.claude/sisyphus/todos.json" "$DIRECTORY/.claude/todos.json"; do
   if [ -f "$todo_path" ]; then
     if command -v jq &> /dev/null; then
       COUNT=$(jq 'if type == "array" then [.[] | select(.status != "completed" and .status != "cancelled")] | length else 0 end' "$todo_path" 2>/dev/null || echo "0")

@@ -19,6 +19,30 @@ if [ -z "$DIRECTORY" ]; then
   DIRECTORY=$(pwd)
 fi
 
+# Find project root by looking for markers and escaping .claude/sisyphus if inside
+get_project_root() {
+  local dir="$1"
+
+  # Strip .claude/sisyphus suffix if present (prevents nesting)
+  dir="${dir%/.claude/sisyphus}"
+  dir="${dir%/.claude}"
+
+  # Look for project root markers
+  while [ "$dir" != "/" ] && [ "$dir" != "." ] && [ -n "$dir" ]; do
+    if [ -d "$dir/.git" ] || [ -f "$dir/CLAUDE.md" ] || [ -f "$dir/package.json" ]; then
+      echo "$dir"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+
+  # Fallback: return the stripped directory
+  echo "${1%/.claude/sisyphus}"
+}
+
+# Get project root
+PROJECT_ROOT=$(get_project_root "$DIRECTORY")
+
 # Function to clean up linked ultrawork state (called when ralph completes or max iterations)
 cleanup_linked_ultrawork() {
   local dir="$1"
@@ -41,8 +65,12 @@ MAX_TODO_CONTINUATION_ATTEMPTS=5
 
 # Generate unique ID for attempt tracking files
 ATTEMPT_ID="${SESSION_ID:-$(echo "$DIRECTORY" | md5 2>/dev/null | cut -c1-8 || echo "$DIRECTORY" | md5sum 2>/dev/null | cut -c1-8 || echo "default")}"
-ATTEMPT_FILE="/tmp/oh-my-toong-todo-attempts-${ATTEMPT_ID}"
-TODO_COUNT_FILE="/tmp/oh-my-toong-todo-count-${ATTEMPT_ID}"
+
+# Use project-local state directory instead of /tmp
+STATE_DIR="$PROJECT_ROOT/.claude/sisyphus/state"
+mkdir -p "$STATE_DIR" 2>/dev/null
+ATTEMPT_FILE="$STATE_DIR/todo-attempts-${ATTEMPT_ID}"
+TODO_COUNT_FILE="$STATE_DIR/todo-count-${ATTEMPT_ID}"
 
 get_attempt_count() {
   cat "$ATTEMPT_FILE" 2>/dev/null || echo "0"
@@ -59,22 +87,22 @@ reset_attempts() {
 
 # Check for active ultrawork state
 ULTRAWORK_STATE=""
-if [ -f "$DIRECTORY/.claude/sisyphus/ultrawork-state.json" ]; then
-  ULTRAWORK_STATE=$(cat "$DIRECTORY/.claude/sisyphus/ultrawork-state.json" 2>/dev/null)
+if [ -f "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state.json" ]; then
+  ULTRAWORK_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state.json" 2>/dev/null)
 elif [ -f "$HOME/.claude/ultrawork-state.json" ]; then
   ULTRAWORK_STATE=$(cat "$HOME/.claude/ultrawork-state.json" 2>/dev/null)
 fi
 
 # Check for active ralph loop
 RALPH_STATE=""
-if [ -f "$DIRECTORY/.claude/sisyphus/ralph-state.json" ]; then
-  RALPH_STATE=$(cat "$DIRECTORY/.claude/sisyphus/ralph-state.json" 2>/dev/null)
+if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" ]; then
+  RALPH_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" 2>/dev/null)
 fi
 
 # Check for verification state (oracle verification)
 VERIFICATION_STATE=""
-if [ -f "$DIRECTORY/.claude/sisyphus/ralph-verification.json" ]; then
-  VERIFICATION_STATE=$(cat "$DIRECTORY/.claude/sisyphus/ralph-verification.json" 2>/dev/null)
+if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" ]; then
+  VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null)
 fi
 
 # =============================================================================
@@ -162,7 +190,7 @@ detect_oracle_rejection() {
 create_ralph_verification() {
   local original_task="$1"
   local completion_claim="${2:-DONE}"
-  local verification_file="$DIRECTORY/.claude/sisyphus/ralph-verification.json"
+  local verification_file="$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json"
   local timestamp
   timestamp=$(date -Iseconds 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z)
 
@@ -181,8 +209,8 @@ VERIFICATION_EOF
 
 # Clean up all ralph state files
 cleanup_ralph_state() {
-  rm -f "$DIRECTORY/.claude/sisyphus/ralph-state.json" 2>/dev/null
-  rm -f "$DIRECTORY/.claude/sisyphus/ralph-verification.json" 2>/dev/null
+  rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" 2>/dev/null
+  rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null
 }
 
 # =============================================================================
@@ -208,7 +236,7 @@ if [ -d "$TODOS_DIR" ]; then
 fi
 
 # Check project todos as well
-for todo_path in "$DIRECTORY/.claude/sisyphus/todos.json" "$DIRECTORY/.claude/todos.json"; do
+for todo_path in "$PROJECT_ROOT/.claude/sisyphus/todos.json" "$DIRECTORY/.claude/todos.json"; do
   if [ -f "$todo_path" ]; then
     if command -v jq &> /dev/null; then
       COUNT=$(jq 'if type == "array" then [.[] | select(.status != "completed" and .status != "cancelled")] | length else 0 end' "$todo_path" 2>/dev/null || echo "0")
@@ -243,7 +271,7 @@ if [ -n "$RALPH_STATE" ]; then
     # Check for oracle approval in transcript - if approved, clean up and allow stop
     if detect_oracle_approval; then
       cleanup_ralph_state
-      cleanup_linked_ultrawork "$DIRECTORY"
+      cleanup_linked_ultrawork "$PROJECT_ROOT"
       echo '{"continue": true}'
       exit 0
     fi
@@ -252,7 +280,7 @@ if [ -n "$RALPH_STATE" ]; then
     if detect_completion_promise; then
       if [ -z "$VERIFICATION_STATE" ]; then
         create_ralph_verification "$PROMPT" "$PROMISE"
-        VERIFICATION_STATE=$(cat "$DIRECTORY/.claude/sisyphus/ralph-verification.json" 2>/dev/null)
+        VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null)
       fi
     fi
 
@@ -271,7 +299,7 @@ if [ -n "$RALPH_STATE" ]; then
         if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
           # Force-accept: clean up all state files and allow stop
           cleanup_ralph_state
-          cleanup_linked_ultrawork "$DIRECTORY"
+          cleanup_linked_ultrawork "$PROJECT_ROOT"
 
           cat << EOF
 {"continue": true, "message": "[FORCE ACCEPT - MAX VERIFICATION ATTEMPTS REACHED]\n\nVerification failed $MAX_ATTEMPTS times without oracle approval.\n\n## Warning\nThe task completion could not be verified by Oracle.\nThis may indicate incomplete or incorrect implementation.\n\n## Recommended Actions:\n1. Manually review the implementation\n2. Check for any obvious issues\n3. Consider running tests manually\n\nAllowing stop due to max attempts limit."}
@@ -280,13 +308,13 @@ EOF
         fi
 
         # Increment verification attempts
-        echo "$VERIFICATION_STATE" | jq ".verification_attempts = $NEXT_ATTEMPT" > "$DIRECTORY/.claude/sisyphus/ralph-verification.json" 2>/dev/null
+        echo "$VERIFICATION_STATE" | jq ".verification_attempts = $NEXT_ATTEMPT" > "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null
 
         # Check for oracle rejection and extract feedback
         REJECTION_FEEDBACK=""
         if REJECTION_FEEDBACK=$(detect_oracle_rejection); then
           # Update verification state with feedback
-          echo "$VERIFICATION_STATE" | jq ".verification_attempts = $NEXT_ATTEMPT | .oracle_feedback = \"$REJECTION_FEEDBACK\"" > "$DIRECTORY/.claude/sisyphus/ralph-verification.json" 2>/dev/null
+          echo "$VERIFICATION_STATE" | jq ".verification_attempts = $NEXT_ATTEMPT | .oracle_feedback = \"$REJECTION_FEEDBACK\"" > "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json" 2>/dev/null
         fi
 
         FEEDBACK_SECTION=""
@@ -303,11 +331,11 @@ EOF
 
     if [ "$ITERATION" -ge "$MAX_ITER" ]; then
       # Max iterations reached - clean up ALL state files
-      rm -f "$DIRECTORY/.claude/sisyphus/ralph-state.json"
-      rm -f "$DIRECTORY/.claude/sisyphus/ralph-verification.json"
+      rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json"
+      rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification.json"
 
       # Clean linked ultrawork
-      cleanup_linked_ultrawork "$DIRECTORY"
+      cleanup_linked_ultrawork "$PROJECT_ROOT"
 
       # Clean todo attempt counter
       rm -f "/tmp/oh-my-toong-todo-attempts-${ATTEMPT_ID}"
@@ -321,7 +349,7 @@ EOF
 
     # Increment iteration
     NEW_ITER=$((ITERATION + 1))
-    echo "$RALPH_STATE" | jq ".iteration = $NEW_ITER" > "$DIRECTORY/.claude/sisyphus/ralph-state.json" 2>/dev/null
+    echo "$RALPH_STATE" | jq ".iteration = $NEW_ITER" > "$PROJECT_ROOT/.claude/sisyphus/ralph-state.json" 2>/dev/null
 
     cat << EOF
 {"continue": false, "reason": "<ralph-loop-continuation>\n\n[RALPH LOOP - ITERATION $NEW_ITER/$MAX_ITER]\n\nYour previous attempt did not output the completion promise. The work is NOT done yet.\n\nCRITICAL INSTRUCTIONS:\n1. Review your progress and the original task\n2. Check your todo list - are ALL items marked complete?\n3. Continue from where you left off\n4. When FULLY complete, output: <promise>$PROMISE</promise>\n5. Do NOT stop until the task is truly done\n\nOriginal task: $PROMPT\n\n</ralph-loop-continuation>\n\n---\n"}
@@ -507,7 +535,7 @@ EOF
 
     # Update state file (best effort)
     if command -v jq &> /dev/null; then
-      echo "$ULTRAWORK_STATE" | jq ".reinforcement_count = $NEW_COUNT | .last_checked_at = \"$(date -Iseconds)\"" > "$DIRECTORY/.claude/sisyphus/ultrawork-state.json" 2>/dev/null
+      echo "$ULTRAWORK_STATE" | jq ".reinforcement_count = $NEW_COUNT | .last_checked_at = \"$(date -Iseconds)\"" > "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state.json" 2>/dev/null
     fi
 
     cat << EOF

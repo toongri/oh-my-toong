@@ -14,6 +14,8 @@ CURRENT_TEST=""
 
 setup_test_env() {
     TEST_TMP_DIR=$(mktemp -d)
+    # Create .git directory so get_project_root() can find project root
+    mkdir -p "$TEST_TMP_DIR/.git"
     mkdir -p "$TEST_TMP_DIR/.claude/sisyphus"
     # Set HOME to test dir for global state files
     export HOME_BACKUP="$HOME"
@@ -139,7 +141,8 @@ run_keyword_detector() {
 
     # Use jq -Rs to properly escape the prompt including newlines
     local escaped_prompt=$(printf '%s' "$prompt" | jq -Rs '.')
-    local input_json="{\"prompt\": $escaped_prompt, \"directory\": \"$directory\"}"
+    # Use "cwd" key (not "directory") as expected by the script
+    local input_json="{\"prompt\": $escaped_prompt, \"cwd\": \"$directory\"}"
     echo "$input_json" | "$SCRIPT_DIR/keyword-detector.sh"
 }
 
