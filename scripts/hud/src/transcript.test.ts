@@ -408,6 +408,117 @@ describe('parseTranscript', () => {
     expect(result.activeSkill).toBe('prometheus');
   });
 
+  it('should extract subagent_type from Task tool input', async () => {
+    const transcriptPath = join(testDir, 'task-with-subagent-type.jsonl');
+    const lines = [
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        message: {
+          model: 'claude-opus-4-20250514',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu_task_sisyphus',
+              name: 'Task',
+              input: {
+                prompt: 'Do something',
+                subagent_type: 'sisyphus-junior',
+              },
+            },
+          ],
+        },
+      }),
+    ];
+    await writeFile(transcriptPath, lines.join('\n'));
+
+    const result = await parseTranscript(transcriptPath);
+
+    expect(result.agents).toHaveLength(1);
+    expect(result.agents[0]).toEqual({
+      type: 'S',
+      model: 'o',
+      id: 'toolu_task_sisyphus',
+      name: 'sisyphus-junior',
+    });
+  });
+
+  it('should extract multiple subagent_types from parallel Task calls', async () => {
+    const transcriptPath = join(testDir, 'multiple-subagent-types.jsonl');
+    const lines = [
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        message: {
+          model: 'claude-opus-4-5-20251101',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu_explore',
+              name: 'Task',
+              input: { prompt: 'Search codebase', subagent_type: 'explore' },
+            },
+            {
+              type: 'tool_use',
+              id: 'toolu_oracle',
+              name: 'Task',
+              input: { prompt: 'Analyze architecture', subagent_type: 'oracle' },
+            },
+          ],
+        },
+      }),
+    ];
+    await writeFile(transcriptPath, lines.join('\n'));
+
+    const result = await parseTranscript(transcriptPath);
+
+    expect(result.agents).toHaveLength(2);
+    expect(result.agents).toContainEqual({
+      type: 'S',
+      model: 'o',
+      id: 'toolu_explore',
+      name: 'explore',
+    });
+    expect(result.agents).toContainEqual({
+      type: 'S',
+      model: 'o',
+      id: 'toolu_oracle',
+      name: 'oracle',
+    });
+  });
+
+  it('should handle Task tool without subagent_type (name is undefined)', async () => {
+    const transcriptPath = join(testDir, 'task-no-subagent-type.jsonl');
+    const lines = [
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: '2024-01-15T10:00:00.000Z',
+        message: {
+          model: 'claude-sonnet-4-20250514',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu_legacy',
+              name: 'Task',
+              input: { prompt: 'Old style task call' },
+            },
+          ],
+        },
+      }),
+    ];
+    await writeFile(transcriptPath, lines.join('\n'));
+
+    const result = await parseTranscript(transcriptPath);
+
+    expect(result.agents).toHaveLength(1);
+    expect(result.agents[0]).toEqual({
+      type: 'S',
+      model: 's',
+      id: 'toolu_legacy',
+      name: undefined,
+    });
+  });
+
   // Tests for TaskCreate/TaskUpdate with taskId mapping
   describe('TaskCreate and TaskUpdate workflow', () => {
     it('should update todo status when TaskUpdate uses taskId from TaskCreate result', async () => {

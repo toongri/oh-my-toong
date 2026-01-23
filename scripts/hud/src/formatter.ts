@@ -128,10 +128,10 @@ export function formatStatusLineV2(data: HudDataV2): string {
     line1Parts.push(colorize(`ctx:${percent}%`, color));
   }
 
-  // Agent codes (e.g., agents:MsSh)
+  // Agent names (e.g., agents:sisyphus-junior, oracle)
   if (data.agents.length > 0) {
-    const codes = data.agents.map(a => `${a.type}${a.model}`).join('');
-    line1Parts.push(colorize(`agents:${codes}`, ANSI.green));
+    const names = data.agents.map(a => a.name || `${a.type}${a.model}`).join(', ');
+    line1Parts.push(colorize(`agents:${names}`, ANSI.green));
   }
 
   // Ralph (only when active)

@@ -456,34 +456,57 @@ describe('formatStatusLineV2', () => {
     });
   });
 
-  describe('agent codes', () => {
-    it('shows agent codes when agents present', () => {
+  describe('agent names display', () => {
+    it('shows agent name when name is provided', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         agents: [
-          { type: 'M', model: 's', id: 'main-1' },
+          { type: 'S', model: 's', id: 'sub-1', name: 'sisyphus-junior' },
         ],
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('agents:Ms');
+      expect(result).toContain('agents:sisyphus-junior');
     });
 
-    it('concatenates multiple agent codes', () => {
+    it('shows multiple agent names comma-separated', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         agents: [
-          { type: 'M', model: 's', id: 'main-1' },
-          { type: 'S', model: 'h', id: 'sub-1' },
+          { type: 'S', model: 's', id: 'sub-1', name: 'sisyphus-junior' },
+          { type: 'S', model: 'o', id: 'sub-2', name: 'oracle' },
         ],
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('agents:MsSh');
+      expect(result).toContain('agents:sisyphus-junior, oracle');
+    });
+
+    it('falls back to type+model code when name is not provided', () => {
+      const data: HudDataV2 = {
+        ...emptyDataV2,
+        agents: [
+          { type: 'S', model: 's', id: 'sub-1' },
+        ],
+      };
+      const result = formatStatusLineV2(data);
+      expect(result).toContain('agents:Ss');
+    });
+
+    it('mixes named and unnamed agents correctly', () => {
+      const data: HudDataV2 = {
+        ...emptyDataV2,
+        agents: [
+          { type: 'S', model: 's', id: 'sub-1', name: 'explore' },
+          { type: 'S', model: 'h', id: 'sub-2' },
+        ],
+      };
+      const result = formatStatusLineV2(data);
+      expect(result).toContain('agents:explore, Sh');
     });
 
     it('applies green color to agents', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        agents: [{ type: 'M', model: 'o', id: 'main-1' }],
+        agents: [{ type: 'S', model: 'o', id: 'main-1', name: 'oracle' }],
       };
       const result = formatStatusLineV2(data);
       expect(result).toContain(ANSI.green);
@@ -690,7 +713,7 @@ describe('formatStatusLineV2', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         contextPercent: 50,
-        agents: [{ type: 'M', model: 's', id: 'main-1' }],
+        agents: [{ type: 'S', model: 's', id: 'sub-1', name: 'explore' }],
         todos: { completed: 3, total: 5 },
         sessionDuration: 45,
       };
@@ -698,7 +721,7 @@ describe('formatStatusLineV2', () => {
       const lines = result.split('\n');
       expect(lines[0]).toContain('[OMT]');
       expect(lines[0]).toContain('ctx:50%');
-      expect(lines[0]).toContain('agents:Ms');
+      expect(lines[0]).toContain('agents:explore');
     });
 
     it('has line 2 with todos and session', () => {
@@ -720,7 +743,7 @@ describe('formatStatusLineV2', () => {
         ...emptyDataV2,
         contextPercent: 50,
         rateLimits: { fiveHour: { percent: 30, resetIn: '2h' }, sevenDay: null },
-        agents: [{ type: 'M', model: 's', id: 'main-1' }],
+        agents: [{ type: 'S', model: 's', id: 'sub-1', name: 'sisyphus-junior' }],
         ralph: createRalphState({ active: true, iteration: 2, max_iterations: 10 }),
         ultrawork: createUltraworkState({ active: true }),
         thinkingActive: true,

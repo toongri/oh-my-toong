@@ -20,7 +20,7 @@ interface ContentItem {
   type?: string;
   id?: string;
   name?: string;
-  input?: { skill?: string; prompt?: string } & TodoInput;
+  input?: { skill?: string; prompt?: string; subagent_type?: string } & TodoInput;
   tool_use_id?: string;
   content?: string;
 }
@@ -140,6 +140,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
                   type: 'S',
                   model: modelToTier(modelId),
                   id: item.id,
+                  name: item.input?.subagent_type,
                 });
               } else if (item.name === 'Skill' && item.input?.skill) {
                 result.activeSkill = item.input.skill;

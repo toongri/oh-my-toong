@@ -98,6 +98,7 @@ export interface AgentInfo {
   type: 'M' | 'S';  // Main or Subagent
   model: 'o' | 's' | 'h';  // opus, sonnet, haiku
   id: string;
+  name?: string;  // subagent_type from Task tool (e.g., 'sisyphus-junior', 'oracle')
 }
 
 // Todo statistics

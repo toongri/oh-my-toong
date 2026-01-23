@@ -158,7 +158,8 @@ async function parseTranscript(transcriptPath) {
                 runningAgents.set(item.id, {
                   type: "S",
                   model: modelToTier(modelId),
-                  id: item.id
+                  id: item.id,
+                  name: item.input?.subagent_type
                 });
               } else if (item.name === "Skill" && item.input?.skill) {
                 result.activeSkill = item.input.skill;
@@ -408,8 +409,8 @@ function formatStatusLineV2(data) {
     line1Parts.push(colorize(`ctx:${percent}%`, color));
   }
   if (data.agents.length > 0) {
-    const codes = data.agents.map((a) => `${a.type}${a.model}`).join("");
-    line1Parts.push(colorize(`agents:${codes}`, ANSI.green));
+    const names = data.agents.map((a) => a.name || `${a.type}${a.model}`).join(", ");
+    line1Parts.push(colorize(`agents:${names}`, ANSI.green));
   }
   if (data.ralph?.active) {
     const color = getRalphColor(data.ralph.iteration, data.ralph.max_iterations);
