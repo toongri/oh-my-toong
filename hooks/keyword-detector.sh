@@ -177,8 +177,8 @@ EOF
   exit 0
 fi
 
-# Check for ultrawork keywords (second priority) - added 'uw' shortcut
-if echo "$PROMPT_LOWER" | grep -qE '\b(ultrawork|ulw|uw)\b'; then
+# Check for ultrawork keywords (second priority)
+if echo "$PROMPT_LOWER" | grep -qE '\b(ultrawork|ulw)\b'; then
   # Create ultrawork state file for persistent mode
   create_ultrawork_state "$PROJECT_ROOT" "$PROMPT"
 
