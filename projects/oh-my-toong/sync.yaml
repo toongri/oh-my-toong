@@ -17,6 +17,7 @@ commands:
   items:
     - cancel-ralph
     - hud
+    - ralph
 
 scripts:
   platforms: [claude]
