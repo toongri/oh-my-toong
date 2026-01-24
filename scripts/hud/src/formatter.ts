@@ -120,10 +120,12 @@ export function formatStatusLineV2(data: HudDataV2): string {
     line1Parts.push(colorize(`ctx:${percent}%`, color));
   }
 
-  // Agent names (e.g., agents:sisyphus-junior, oracle)
+  // Agent names (compact format: agents:first+N)
   if (data.agents.length > 0) {
-    const names = data.agents.map(a => a.name || `${a.type}${a.model}`).join(', ');
-    line1Parts.push(colorize(`agents:${names}`, ANSI.green));
+    const firstName = data.agents[0].name || `${data.agents[0].type}${data.agents[0].model}`;
+    const remaining = data.agents.length - 1;
+    const agentsText = remaining > 0 ? `${firstName}+${remaining}` : firstName;
+    line1Parts.push(colorize(`agents:${agentsText}`, ANSI.green));
   }
 
   // Thinking indicator
@@ -135,10 +137,6 @@ export function formatStatusLineV2(data: HudDataV2): string {
   if (data.ralph?.active) {
     const color = getRalphColor(data.ralph.iteration, data.ralph.max_iterations);
     let text = `ralph:${data.ralph.iteration}/${data.ralph.max_iterations}`;
-    // Add + suffix when linked with ultrawork
-    if (data.ralph.linked_ultrawork) {
-      text += '+';
-    }
     // Add oracle feedback count if any
     if (data.ralph.oracle_feedback && data.ralph.oracle_feedback.length > 0) {
       text += ` fb:${data.ralph.oracle_feedback.length}`;

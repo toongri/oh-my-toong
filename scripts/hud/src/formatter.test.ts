@@ -404,31 +404,48 @@ describe('formatStatusLineV2', () => {
     });
   });
 
-  describe('agent names display', () => {
-    it('shows agent name when name is provided', () => {
+  describe('agent names display (compact format)', () => {
+    it('shows single agent name without +N suffix', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         agents: [
-          { type: 'S', model: 's', id: 'sub-1', name: 'sisyphus-junior' },
+          { type: 'S', model: 's', id: 'sub-1', name: 'explore' },
         ],
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('agents:sisyphus-junior');
+      expect(result).toContain('agents:explore');
+      expect(result).not.toContain('agents:explore+');
     });
 
-    it('shows multiple agent names comma-separated', () => {
+    it('shows first agent name with +1 suffix for 2 agents', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         agents: [
-          { type: 'S', model: 's', id: 'sub-1', name: 'sisyphus-junior' },
+          { type: 'S', model: 's', id: 'sub-1', name: 'explore' },
           { type: 'S', model: 'o', id: 'sub-2', name: 'oracle' },
         ],
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('agents:sisyphus-junior, oracle');
+      expect(result).toContain('agents:explore+1');
+      expect(result).not.toContain('oracle');
     });
 
-    it('falls back to type+model code when name is not provided', () => {
+    it('shows first agent name with +2 suffix for 3 agents', () => {
+      const data: HudDataV2 = {
+        ...emptyDataV2,
+        agents: [
+          { type: 'S', model: 's', id: 'sub-1', name: 'explore' },
+          { type: 'S', model: 'o', id: 'sub-2', name: 'librarian' },
+          { type: 'S', model: 'o', id: 'sub-3', name: 'oracle' },
+        ],
+      };
+      const result = formatStatusLineV2(data);
+      expect(result).toContain('agents:explore+2');
+      expect(result).not.toContain('librarian');
+      expect(result).not.toContain('oracle');
+    });
+
+    it('falls back to type+model code when first agent has no name', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         agents: [
@@ -439,7 +456,7 @@ describe('formatStatusLineV2', () => {
       expect(result).toContain('agents:Ss');
     });
 
-    it('mixes named and unnamed agents correctly', () => {
+    it('uses first agent name even when later agents have no name', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         agents: [
@@ -448,7 +465,7 @@ describe('formatStatusLineV2', () => {
         ],
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('agents:explore, Sh');
+      expect(result).toContain('agents:explore+1');
     });
 
     it('applies green color to agents', () => {
@@ -755,22 +772,12 @@ describe('formatStatusLineV2', () => {
     });
   });
 
-  describe('integrated ralph+ultrawork badge', () => {
-    it('shows + suffix on ralph when linked_ultrawork is true', () => {
+  describe('ralph display without + suffix', () => {
+    it('never shows + suffix on ralph even when linked_ultrawork is true', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, linked_ultrawork: true }),
         ultrawork: createUltraworkState({ active: true, linked_to_ralph: true }),
-      };
-      const result = formatStatusLineV2(data);
-      expect(result).toContain('ralph:3/10+');
-    });
-
-    it('does not show + suffix on ralph when linked_ultrawork is false', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, linked_ultrawork: false }),
-        ultrawork: createUltraworkState({ active: true, linked_to_ralph: false }),
       };
       const result = formatStatusLineV2(data);
       expect(result).toContain('ralph:3/10');
@@ -784,8 +791,8 @@ describe('formatStatusLineV2', () => {
         ultrawork: createUltraworkState({ active: true, linked_to_ralph: true }),
       };
       const result = formatStatusLineV2(data);
-      // Should have ralph:3/10+ but not separate "ultrawork" text
-      expect(result).toContain('ralph:3/10+');
+      // Should have ralph:3/10 but not separate "ultrawork" text
+      expect(result).toContain('ralph:3/10');
       expect(result).not.toMatch(/\bultrawork\b/);
     });
 
@@ -800,34 +807,16 @@ describe('formatStatusLineV2', () => {
       expect(result).toContain('ultrawork');
     });
 
-    it('inherits ralph color for integrated badge', () => {
-      // When iteration is low, should be green
-      const dataLow: HudDataV2 = {
-        ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 2, max_iterations: 10, linked_ultrawork: true }),
-        ultrawork: createUltraworkState({ active: true, linked_to_ralph: true }),
-      };
-      const resultLow = formatStatusLineV2(dataLow);
-      expect(resultLow).toContain(ANSI.green);
-
-      // When iteration is high, should be yellow
-      const dataHigh: HudDataV2 = {
-        ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 8, max_iterations: 10, linked_ultrawork: true }),
-        ultrawork: createUltraworkState({ active: true, linked_to_ralph: true }),
-      };
-      const resultHigh = formatStatusLineV2(dataHigh);
-      expect(resultHigh).toContain(ANSI.yellow);
-    });
-
-    it('shows + suffix with feedback count when both linked and has feedback', () => {
+    it('shows feedback count without + suffix when linked and has feedback', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, linked_ultrawork: true, oracle_feedback: ['feedback1'] }),
         ultrawork: createUltraworkState({ active: true, linked_to_ralph: true }),
       };
       const result = formatStatusLineV2(data);
-      expect(result).toMatch(/ralph:3\/10\+.*fb:1/);
+      expect(result).toContain('ralph:3/10');
+      expect(result).not.toContain('ralph:3/10+');
+      expect(result).toContain('fb:1');
     });
   });
 });

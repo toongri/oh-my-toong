@@ -434,8 +434,10 @@ function formatStatusLineV2(data) {
     line1Parts.push(colorize(`ctx:${percent}%`, color));
   }
   if (data.agents.length > 0) {
-    const names = data.agents.map((a) => a.name || `${a.type}${a.model}`).join(", ");
-    line1Parts.push(colorize(`agents:${names}`, ANSI.green));
+    const firstName = data.agents[0].name || `${data.agents[0].type}${data.agents[0].model}`;
+    const remaining = data.agents.length - 1;
+    const agentsText = remaining > 0 ? `${firstName}+${remaining}` : firstName;
+    line1Parts.push(colorize(`agents:${agentsText}`, ANSI.green));
   }
   if (data.thinkingActive) {
     line1Parts.push(colorize("thinking", ANSI.cyan));
@@ -443,9 +445,6 @@ function formatStatusLineV2(data) {
   if (data.ralph?.active) {
     const color = getRalphColor(data.ralph.iteration, data.ralph.max_iterations);
     let text = `ralph:${data.ralph.iteration}/${data.ralph.max_iterations}`;
-    if (data.ralph.linked_ultrawork) {
-      text += "+";
-    }
     if (data.ralph.oracle_feedback && data.ralph.oracle_feedback.length > 0) {
       text += ` fb:${data.ralph.oracle_feedback.length}`;
     }
