@@ -36,6 +36,7 @@ hooks:
     - component: persistent-mode.js
       event: Stop
       timeout: 15
+      command: "node $CLAUDE_PROJECT_DIR/.claude/hooks/persistent-mode.js"
     - component: post-tool-verifier.sh
       event: PostToolUse
       timeout: 10
