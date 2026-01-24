@@ -58,18 +58,6 @@ async function readRalphState(cwd, sessionId = "default") {
 async function readUltraworkState(cwd) {
   return findStateFile(cwd, "ultrawork-state.json");
 }
-async function readRalphVerification(cwd, sessionId = "default") {
-  const verification = await findStateFile(cwd, `ralph-verification-${sessionId}.json`);
-  if (verification?.created_at) {
-    const createdAt = new Date(verification.created_at).getTime();
-    const now = Date.now();
-    const hours24 = 24 * 60 * 60 * 1e3;
-    if (now - createdAt > hours24) {
-      return null;
-    }
-  }
-  return verification;
-}
 async function readBackgroundTasks() {
   const tasksDir = join(homedir(), ".claude", "background-tasks");
   try {
@@ -418,8 +406,8 @@ function formatStatusLineV2(data) {
     if (data.ralph.linked_ultrawork) {
       text += "+";
     }
-    if (data.ralphVerification?.pending) {
-      text += ` v${data.ralphVerification.verification_attempts}/${data.ralphVerification.max_verification_attempts}`;
+    if (data.ralph.oracle_feedback && data.ralph.oracle_feedback.length > 0) {
+      text += ` fb:${data.ralph.oracle_feedback.length}`;
     }
     line1Parts.push(colorize(text, color));
   }
@@ -466,7 +454,6 @@ async function main() {
     const [
       ralph,
       ultrawork,
-      ralphVerification,
       backgroundTasks,
       transcriptData,
       rateLimits,
@@ -474,7 +461,6 @@ async function main() {
     ] = await Promise.all([
       readRalphState(cwd, sessionId),
       readUltraworkState(cwd),
-      readRalphVerification(cwd, sessionId),
       readBackgroundTasks(),
       input.transcript_path ? parseTranscript(input.transcript_path) : Promise.resolve({ runningAgents: 0, activeSkill: null, agents: [], sessionStartedAt: null, todos: [] }),
       fetchRateLimits(),
@@ -491,7 +477,6 @@ async function main() {
       contextPercent: input.context_window?.used_percentage ?? null,
       ralph,
       ultrawork,
-      ralphVerification,
       todos,
       runningAgents: transcriptData.runningAgents,
       backgroundTasks,

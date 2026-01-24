@@ -2,7 +2,6 @@ import type {
   StdinInput,
   RalphState,
   UltraworkState,
-  RalphVerification,
   TodoItem,
   TodosState,
   HudData,
@@ -99,35 +98,7 @@ describe('types', () => {
     });
   });
 
-  describe('RalphVerification', () => {
-    it('should accept valid ralph verification structure', () => {
-      const verification: RalphVerification = {
-        pending: true,
-        verification_attempts: 1,
-        max_verification_attempts: 3,
-        original_task: 'Complete implementation',
-        completion_claim: 'Implementation complete',
-        created_at: '2024-01-22T10:00:00Z',
-      };
-
-      expect(verification.pending).toBe(true);
-      expect(verification.verification_attempts).toBe(1);
-    });
-
-    it('should accept optional oracle_feedback field', () => {
-      const verification: RalphVerification = {
-        pending: false,
-        verification_attempts: 2,
-        max_verification_attempts: 3,
-        original_task: 'Complete implementation',
-        completion_claim: 'Implementation complete',
-        oracle_feedback: 'Some feedback',
-        created_at: '2024-01-22T10:00:00Z',
-      };
-
-      expect(verification.oracle_feedback).toBe('Some feedback');
-    });
-  });
+  // RalphVerification tests removed - oracle_feedback is now in RalphState
 
   describe('TodoItem', () => {
     it('should accept valid todo item with pending status', () => {
@@ -180,8 +151,7 @@ describe('types', () => {
         contextPercent: null,
         ralph: null,
         ultrawork: null,
-        ralphVerification: null,
-        todos: null,
+                todos: null,
         runningAgents: 0,
         backgroundTasks: 0,
         activeSkill: null,
@@ -210,8 +180,7 @@ describe('types', () => {
           reinforcement_count: 1,
           linked_to_ralph: true,
         },
-        ralphVerification: null,
-        todos: { completed: 3, total: 5 },
+                todos: { completed: 3, total: 5 },
         runningAgents: 2,
         backgroundTasks: 1,
         activeSkill: 'prometheus',
@@ -367,8 +336,7 @@ describe('types', () => {
         contextPercent: null,
         ralph: null,
         ultrawork: null,
-        ralphVerification: null,
-        todos: null,
+                todos: null,
         runningAgents: 0,
         backgroundTasks: 0,
         activeSkill: null,
@@ -406,8 +374,7 @@ describe('types', () => {
           reinforcement_count: 1,
           linked_to_ralph: true,
         },
-        ralphVerification: null,
-        todos: { completed: 3, total: 5 },
+                todos: { completed: 3, total: 5 },
         runningAgents: 2,
         backgroundTasks: 1,
         activeSkill: 'prometheus',

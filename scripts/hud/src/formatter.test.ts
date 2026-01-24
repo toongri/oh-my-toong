@@ -1,5 +1,5 @@
 import { formatStatusLine, formatMinimalStatus, formatStatusLineV2 } from './formatter.js';
-import { ANSI, type HudData, type HudDataV2, type RalphState, type UltraworkState, type RalphVerification, type AgentInfo } from './types.js';
+import { ANSI, type HudData, type HudDataV2, type RalphState, type UltraworkState, type AgentInfo } from './types.js';
 
 // Helper to create complete ralph state for tests
 function createRalphState(overrides: Partial<RalphState> & Pick<RalphState, 'active' | 'iteration' | 'max_iterations'>): RalphState {
@@ -23,22 +23,13 @@ function createUltraworkState(overrides: Partial<UltraworkState> & Pick<Ultrawor
   };
 }
 
-// Helper to create complete ralph verification for tests
-function createRalphVerification(overrides: Partial<RalphVerification> & Pick<RalphVerification, 'pending' | 'verification_attempts' | 'max_verification_attempts'>): RalphVerification {
-  return {
-    original_task: 'test task',
-    completion_claim: 'test claim',
-    created_at: '2025-01-22T10:00:00+09:00',
-    ...overrides,
-  };
-}
+// createRalphVerification helper removed - oracle_feedback is now in RalphState
 
 describe('formatStatusLine', () => {
   const emptyData: HudData = {
     contextPercent: null,
     ralph: null,
     ultrawork: null,
-    ralphVerification: null,
     todos: null,
     runningAgents: 0,
     backgroundTasks: 0,
@@ -100,33 +91,23 @@ describe('formatStatusLine', () => {
     });
   });
 
-  describe('ralph verification', () => {
-    it('shows verification status when pending', () => {
+  describe('ralph oracle feedback', () => {
+    it('shows feedback count when oracle_feedback has items', () => {
       const data: HudData = {
         ...emptyData,
-        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10 }),
-        ralphVerification: createRalphVerification({
-          pending: true,
-          verification_attempts: 1,
-          max_verification_attempts: 3,
-        }),
+        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, oracle_feedback: ['feedback1', 'feedback2'] }),
       };
       const result = formatStatusLine(data);
-      expect(result).toMatch(/ralph:3\/10.*✓1\/3/);
+      expect(result).toMatch(/ralph:3\/10.*fb:2/);
     });
 
-    it('does not show verification when not pending', () => {
+    it('does not show feedback when oracle_feedback is empty', () => {
       const data: HudData = {
         ...emptyData,
-        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10 }),
-        ralphVerification: createRalphVerification({
-          pending: false,
-          verification_attempts: 1,
-          max_verification_attempts: 3,
-        }),
+        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, oracle_feedback: [] }),
       };
       const result = formatStatusLine(data);
-      expect(result).not.toContain('✓');
+      expect(result).not.toContain('fb:');
     });
   });
 
@@ -335,7 +316,6 @@ describe('formatStatusLineV2', () => {
     contextPercent: null,
     ralph: null,
     ultrawork: null,
-    ralphVerification: null,
     todos: null,
     runningAgents: 0,
     backgroundTasks: 0,
@@ -537,18 +517,13 @@ describe('formatStatusLineV2', () => {
       expect(result).not.toContain('ralph');
     });
 
-    it('shows verification status when pending', () => {
+    it('shows feedback count when oracle_feedback has items', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10 }),
-        ralphVerification: createRalphVerification({
-          pending: true,
-          verification_attempts: 1,
-          max_verification_attempts: 3,
-        }),
+        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, oracle_feedback: ['feedback1'] }),
       };
       const result = formatStatusLineV2(data);
-      expect(result).toMatch(/ralph:3\/10.*v1\/3/);
+      expect(result).toMatch(/ralph:3\/10.*fb:1/);
     });
   });
 
@@ -856,19 +831,14 @@ describe('formatStatusLineV2', () => {
       expect(resultHigh).toContain(ANSI.yellow);
     });
 
-    it('shows + suffix with verification status when both linked and verifying', () => {
+    it('shows + suffix with feedback count when both linked and has feedback', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, linked_ultrawork: true }),
+        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, linked_ultrawork: true, oracle_feedback: ['feedback1'] }),
         ultrawork: createUltraworkState({ active: true, linked_to_ralph: true }),
-        ralphVerification: createRalphVerification({
-          pending: true,
-          verification_attempts: 1,
-          max_verification_attempts: 3,
-        }),
       };
       const result = formatStatusLineV2(data);
-      expect(result).toMatch(/ralph:3\/10\+.*v1\/3/);
+      expect(result).toMatch(/ralph:3\/10\+.*fb:1/);
     });
   });
 });

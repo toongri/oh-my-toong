@@ -234,14 +234,14 @@ test_max_iteration_cleans_ralph_state() {
     fi
 }
 
-test_max_iteration_cleans_verification_state() {
-    # The max iteration handler should clean up verification state (session-specific)
+test_max_iteration_no_verification_state_cleanup() {
+    # The max iteration handler should NOT clean up verification state (removed)
     # Check for rm command near the max iteration check
-    if grep -B 5 -A 15 'ITERATION.*-ge.*MAX_ITER' "$HOOKS_DIR/persistent-mode.sh" | grep -q 'rm -f.*ralph-verification-\${SESSION_ID}'; then
-        return 0
-    else
-        echo "ASSERTION FAILED: max iteration should clean ralph-verification-{SESSION_ID}.json"
+    if grep -B 5 -A 15 'ITERATION.*-ge.*MAX_ITER' "$HOOKS_DIR/persistent-mode.sh" | grep -q 'rm -f.*ralph-verification'; then
+        echo "ASSERTION FAILED: max iteration should NOT reference ralph-verification files (removed)"
         return 1
+    else
+        return 0
     fi
 }
 
@@ -431,20 +431,20 @@ EOF
     fi
 }
 
-test_ralph_verification_uses_session_id() {
-    # Verify persistent-mode.sh reads ralph-verification-{SESSION_ID}.json
+test_no_ralph_verification_session_id() {
+    # Verify persistent-mode.sh does NOT read ralph-verification-{SESSION_ID}.json (removed)
     if grep -q 'ralph-verification-\${SESSION_ID' "$HOOKS_DIR/persistent-mode.sh" || \
        grep -q 'ralph-verification-.*SESSION_ID' "$HOOKS_DIR/persistent-mode.sh"; then
-        return 0
-    else
-        echo "ASSERTION FAILED: persistent-mode.sh should use session-specific ralph-verification file"
+        echo "ASSERTION FAILED: persistent-mode.sh should NOT use ralph-verification files (removed)"
         return 1
+    else
+        return 0
     fi
 }
 
 test_cleanup_ralph_state_uses_session_id() {
     # Verify cleanup_ralph_state function uses session-specific paths
-    if grep -A 5 'cleanup_ralph_state\(\)' "$HOOKS_DIR/persistent-mode.sh" | grep -q 'ralph-state-\${SESSION_ID'; then
+    if grep -A 3 'cleanup_ralph_state\(\)' "$HOOKS_DIR/persistent-mode.sh" | grep -q 'ralph-state-\${SESSION_ID'; then
         return 0
     else
         echo "ASSERTION FAILED: cleanup_ralph_state should use session-specific file"
@@ -573,6 +573,136 @@ EOF
 }
 
 # =============================================================================
+# Tests: ralph-verification REMOVAL (integrated into ralph-state)
+# =============================================================================
+
+test_no_verification_state_variable() {
+    # persistent-mode.sh should NOT define VERIFICATION_STATE variable (removed)
+    if grep -E '^VERIFICATION_STATE=' "$HOOKS_DIR/persistent-mode.sh" >/dev/null 2>&1; then
+        echo "ASSERTION FAILED: VERIFICATION_STATE variable should NOT exist (removed)"
+        return 1
+    else
+        return 0
+    fi
+}
+
+test_no_create_ralph_verification_function() {
+    # persistent-mode.sh should NOT have create_ralph_verification function (removed)
+    if grep -q 'create_ralph_verification()' "$HOOKS_DIR/persistent-mode.sh"; then
+        echo "ASSERTION FAILED: create_ralph_verification() function should NOT exist (removed)"
+        return 1
+    else
+        return 0
+    fi
+}
+
+test_no_ralph_verification_file_references() {
+    # persistent-mode.sh should NOT reference ralph-verification-*.json files (removed)
+    if grep -q 'ralph-verification-' "$HOOKS_DIR/persistent-mode.sh"; then
+        echo "ASSERTION FAILED: ralph-verification file references should NOT exist (removed)"
+        return 1
+    else
+        return 0
+    fi
+}
+
+test_cleanup_ralph_state_no_verification_cleanup() {
+    # cleanup_ralph_state() should NOT clean verification files (removed)
+    if grep -A 5 'cleanup_ralph_state()' "$HOOKS_DIR/persistent-mode.sh" | grep -q 'ralph-verification'; then
+        echo "ASSERTION FAILED: cleanup_ralph_state should NOT reference verification files (removed)"
+        return 1
+    else
+        return 0
+    fi
+}
+
+test_ralph_state_has_oracle_feedback_field() {
+    # The code should reference oracle_feedback field in ralph-state
+    if grep -q 'oracle_feedback' "$HOOKS_DIR/persistent-mode.sh"; then
+        return 0
+    else
+        echo "ASSERTION FAILED: persistent-mode.sh should reference oracle_feedback field"
+        return 1
+    fi
+}
+
+test_iteration_increment_on_no_oracle_approval() {
+    # Behavior test: iteration should increment when stop without VERIFIED_COMPLETE
+    mkdir -p "$TEST_TMP_DIR/.git"
+
+    # Create ralph state with iteration=3
+    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" << 'EOF'
+{
+  "active": true,
+  "iteration": 3,
+  "max_iterations": 10,
+  "completion_promise": "DONE",
+  "prompt": "test task",
+  "oracle_feedback": []
+}
+EOF
+
+    # Create transcript WITHOUT oracle approval
+    local transcript_file="$TEST_TMP_DIR/transcript.jsonl"
+    cat > "$transcript_file" << 'EOF'
+{"type": "message", "content": "Working on task..."}
+{"type": "message", "content": "<promise>DONE</promise>"}
+EOF
+
+    # Run with transcript_path
+    echo '{"cwd": "'"$TEST_TMP_DIR"'", "transcript_path": "'"$transcript_file"'"}' | "$HOOKS_DIR/persistent-mode.sh" > /dev/null 2>&1
+
+    # Check that iteration was incremented
+    local new_iteration
+    new_iteration=$(jq -r '.iteration' "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" 2>/dev/null)
+
+    if [[ "$new_iteration" == "4" ]]; then
+        return 0
+    else
+        echo "ASSERTION FAILED: iteration should be 4 after stop without oracle approval (was $new_iteration)"
+        return 1
+    fi
+}
+
+test_oracle_feedback_stored_on_rejection() {
+    # Behavior test: oracle feedback should be stored in ralph-state when rejected
+    mkdir -p "$TEST_TMP_DIR/.git"
+
+    # Create ralph state
+    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" << 'EOF'
+{
+  "active": true,
+  "iteration": 2,
+  "max_iterations": 10,
+  "completion_promise": "DONE",
+  "prompt": "test task",
+  "oracle_feedback": []
+}
+EOF
+
+    # Create transcript with oracle rejection
+    local transcript_file="$TEST_TMP_DIR/transcript.jsonl"
+    cat > "$transcript_file" << 'EOF'
+{"type": "message", "content": "Working on task..."}
+{"type": "message", "content": "Oracle rejected: issue: tests not passing"}
+EOF
+
+    # Run with transcript_path
+    echo '{"cwd": "'"$TEST_TMP_DIR"'", "transcript_path": "'"$transcript_file"'"}' | "$HOOKS_DIR/persistent-mode.sh" > /dev/null 2>&1
+
+    # Check that oracle_feedback has content
+    local feedback_count
+    feedback_count=$(jq -r '.oracle_feedback | length' "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" 2>/dev/null)
+
+    if [[ "$feedback_count" -gt 0 ]]; then
+        return 0
+    else
+        echo "ASSERTION FAILED: oracle_feedback should have entries after rejection (count: $feedback_count)"
+        return 1
+    fi
+}
+
+# =============================================================================
 # Tests: Logging integration
 # =============================================================================
 
@@ -636,7 +766,7 @@ main() {
     # Session-based ralph state tests
     run_test test_session_specific_ralph_state_reading
     run_test test_session_specific_ralph_state_ignores_other_sessions
-    run_test test_ralph_verification_uses_session_id
+    run_test test_no_ralph_verification_session_id
     run_test test_cleanup_ralph_state_uses_session_id
 
     # linked_to_ralph and cleanup_linked_ultrawork REMOVED tests
@@ -655,7 +785,7 @@ main() {
 
     # Max iteration cleanup tests
     run_test test_max_iteration_cleans_ralph_state
-    run_test test_max_iteration_cleans_verification_state
+    run_test test_max_iteration_no_verification_state_cleanup
     run_test test_max_iteration_cleans_ultrawork_state
 
     # Ultrawork state schema tests (linked_to_ralph removed)
@@ -682,6 +812,15 @@ main() {
     # Logging integration tests
     run_test test_sources_logging_lib_with_fallback
     run_test test_logging_does_not_break_hook
+
+    # ralph-verification REMOVAL tests
+    run_test test_no_verification_state_variable
+    run_test test_no_create_ralph_verification_function
+    run_test test_no_ralph_verification_file_references
+    run_test test_cleanup_ralph_state_no_verification_cleanup
+    run_test test_ralph_state_has_oracle_feedback_field
+    run_test test_iteration_increment_on_no_oracle_approval
+    run_test test_oracle_feedback_stored_on_rejection
 
     echo "=========================================="
     echo "Results: $TESTS_PASSED passed, $TESTS_FAILED failed"

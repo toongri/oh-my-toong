@@ -16,7 +16,6 @@ cd .claude/sisyphus
 
 # Remove all session-specific ralph state files
 rm -f ralph-state-*.json 2>/dev/null || true
-rm -f ralph-verification-*.json 2>/dev/null || true
 
 # Check if ultrawork is linked to ralph and clean up if so
 if [ -f ultrawork-state.json ]; then
@@ -33,9 +32,8 @@ fi
 After running the cleanup commands, verify the cancellation was successful:
 
 ```bash
-# Should return no files for both patterns
+# Should return no files
 ls -la .claude/sisyphus/ralph-state-*.json 2>/dev/null || echo "ralph-state files removed"
-ls -la .claude/sisyphus/ralph-verification-*.json 2>/dev/null || echo "ralph-verification files removed"
 ```
 
 ## POST-CANCELLATION
@@ -43,6 +41,6 @@ ls -la .claude/sisyphus/ralph-verification-*.json 2>/dev/null || echo "ralph-ver
 After executing the cleanup:
 - You are free to stop working
 - The persistent mode hook will no longer force continuation
-- All verification states have been cleared
+- All ralph state has been cleared
 
 If you want to start a new loop later, use `/ralph "task description"`.

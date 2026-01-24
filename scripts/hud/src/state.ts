@@ -1,7 +1,7 @@
 import { readFile, readdir, stat } from 'fs/promises';
 import { join } from 'path';
 import { homedir } from 'os';
-import type { RalphState, UltraworkState, RalphVerification, TodosState, TodoItem } from './types.js';
+import type { RalphState, UltraworkState, TodosState, TodoItem } from './types.js';
 
 /**
  * Maximum age for state files to be considered "active".
@@ -74,22 +74,6 @@ export async function readRalphState(cwd: string, sessionId: string = 'default')
 
 export async function readUltraworkState(cwd: string): Promise<UltraworkState | null> {
   return findStateFile<UltraworkState>(cwd, 'ultrawork-state.json');
-}
-
-export async function readRalphVerification(cwd: string, sessionId: string = 'default'): Promise<RalphVerification | null> {
-  const verification = await findStateFile<RalphVerification>(cwd, `ralph-verification-${sessionId}.json`);
-
-  // Check if stale (>24h)
-  if (verification?.created_at) {
-    const createdAt = new Date(verification.created_at).getTime();
-    const now = Date.now();
-    const hours24 = 24 * 60 * 60 * 1000;
-    if (now - createdAt > hours24) {
-      return null; // Treat as inactive
-    }
-  }
-
-  return verification;
 }
 
 // readTodos removed - todos now come from transcript only for session isolation

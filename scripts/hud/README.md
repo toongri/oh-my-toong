@@ -80,9 +80,8 @@ Or manually:
 | Feature | Source |
 |---------|--------|
 | Context % | stdin JSON from Claude Code |
-| Ralph status | `.claude/sisyphus/ralph-state.json` |
+| Ralph status | `.claude/sisyphus/ralph-state.json` (includes oracle_feedback) |
 | Ultrawork | `.claude/sisyphus/ultrawork-state.json` |
-| Verification | `.claude/sisyphus/ralph-verification.json` |
 | Todos | `.claude/sisyphus/todos.json` + `~/.claude/todos/*.json` |
 | Agents | `transcript.jsonl` parsing |
 | Skills | `transcript.jsonl` parsing |

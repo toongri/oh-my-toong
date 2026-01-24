@@ -110,11 +110,6 @@ if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" ]; then
   RALPH_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null)
 fi
 
-# Check for verification state (oracle verification, session-specific)
-VERIFICATION_STATE=""
-if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" ]; then
-  VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null)
-fi
 
 # =============================================================================
 # Transcript Detection Functions
@@ -182,31 +177,9 @@ detect_oracle_rejection() {
   return 1
 }
 
-# Create ralph-verification-{SESSION_ID}.json when promise detected
-create_ralph_verification() {
-  local original_task="$1"
-  local completion_claim="${2:-DONE}"
-  local verification_file="$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json"
-  local timestamp
-  timestamp=$(date -Iseconds 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z)
-
-  cat > "$verification_file" << VERIFICATION_EOF
-{
-  "pending": true,
-  "verification_attempts": 0,
-  "max_verification_attempts": 3,
-  "original_task": "$original_task",
-  "completion_claim": "$completion_claim",
-  "oracle_feedback": "",
-  "requested_at": "$timestamp"
-}
-VERIFICATION_EOF
-}
-
-# Clean up all ralph state files (session-specific)
+# Clean up ralph state file (session-specific)
 cleanup_ralph_state() {
   rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null
-  rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null
 }
 
 # =============================================================================
@@ -274,65 +247,10 @@ if [ -n "$RALPH_STATE" ]; then
       exit 0
     fi
 
-    # Check for completion promise in transcript - create verification state if found
-    if detect_completion_promise; then
-      if [ -z "$VERIFICATION_STATE" ]; then
-        create_ralph_verification "$PROMPT" "$PROMISE"
-        VERIFICATION_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null)
-      fi
-    fi
-
-    # Check if oracle verification is pending
-    if [ -n "$VERIFICATION_STATE" ]; then
-      IS_PENDING=$(echo "$VERIFICATION_STATE" | jq -r '.pending // false' 2>/dev/null)
-      if [ "$IS_PENDING" = "true" ]; then
-        ATTEMPT=$(echo "$VERIFICATION_STATE" | jq -r '.verification_attempts // 0' 2>/dev/null)
-        MAX_ATTEMPTS=$(echo "$VERIFICATION_STATE" | jq -r '.max_verification_attempts // 3' 2>/dev/null)
-        ORIGINAL_TASK=$(echo "$VERIFICATION_STATE" | jq -r '.original_task // ""' 2>/dev/null)
-        COMPLETION_CLAIM=$(echo "$VERIFICATION_STATE" | jq -r '.completion_claim // ""' 2>/dev/null)
-        ORACLE_FEEDBACK=$(echo "$VERIFICATION_STATE" | jq -r '.oracle_feedback // ""' 2>/dev/null)
-        NEXT_ATTEMPT=$((ATTEMPT + 1))
-
-        # Handle max verification attempts (force-accept with warning)
-        if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-          # Force-accept: clean up all state files and allow stop
-          cleanup_ralph_state
-          # Clean up session-specific ultrawork state
-          rm -f "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state-${SESSION_ID}.json"
-          rm -f "$HOME/.claude/ultrawork-state-${SESSION_ID}.json"
-
-          cat << EOF
-{"continue": true}
-EOF
-          exit 0
-        fi
-
-        # Increment verification attempts
-        echo "$VERIFICATION_STATE" | jq ".verification_attempts = $NEXT_ATTEMPT" > "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null
-
-        # Check for oracle rejection and extract feedback
-        REJECTION_FEEDBACK=""
-        if REJECTION_FEEDBACK=$(detect_oracle_rejection); then
-          # Update verification state with feedback
-          echo "$VERIFICATION_STATE" | jq ".verification_attempts = $NEXT_ATTEMPT | .oracle_feedback = \"$REJECTION_FEEDBACK\"" > "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json" 2>/dev/null
-        fi
-
-        FEEDBACK_SECTION=""
-        if [ -n "$ORACLE_FEEDBACK" ] && [ "$ORACLE_FEEDBACK" != "null" ]; then
-          FEEDBACK_SECTION="\n**Previous Oracle Feedback (rejected):**\n$ORACLE_FEEDBACK\n"
-        fi
-
-        cat << EOF
-{"decision": "block", "reason": "<ralph-verification>\n\n[🚨 ORACLE VERIFICATION REQUIRED - Attempt $NEXT_ATTEMPT/$MAX_ATTEMPTS]\n\n## ⛔ YOU CANNOT STOP YET\n\nYou output \`<promise>DONE</promise>\` but the hook detected NO oracle approval tag.\n\n**Original Task:**\n$ORIGINAL_TASK\n\n**Completion Claim:**\n$COMPLETION_CLAIM\n$FEEDBACK_SECTION\n---\n\n## 🔴 CRITICAL: ORACLE VERIFICATION PROTOCOL\n\n### Step 1: Spawn Oracle NOW\n\`\`\`\nTask(subagent_type=\"oracle\", prompt=\"Verify completion of: $ORIGINAL_TASK\")\n\`\`\`\n\n### Step 2: Read Oracle's Response\n- Did Oracle find ANY issues? → Fix them, re-verify\n- Did Oracle approve? → Proceed to Step 3\n\n### Step 3: OUTPUT THE TAG (YOU must do this, not Oracle)\n\n**⚠️ YOU MUST OUTPUT THIS EXACT TAG:**\n\n\`\`\`\n<oracle-approved>VERIFIED_COMPLETE</oracle-approved>\n\`\`\`\n\n### Step 4: THEN output promise\n\`\`\`\n<promise>DONE</promise>\n\`\`\`\n\n---\n\n## 🛑 WHY YOU ARE BLOCKED\n\nThe hook scans the transcript for:\n\`<oracle-approved>VERIFIED_COMPLETE</oracle-approved>\`\n\n**This tag was NOT found.** You MUST output it BEFORE the promise.\n\nSequence: Oracle verification → YOU output tag → THEN promise\n\n</ralph-verification>\n\n---\n"}
-EOF
-        exit 0
-      fi
-    fi
-
+    # Check max iterations first
     if [ "$ITERATION" -ge "$MAX_ITER" ]; then
       # Max iterations reached - clean up ALL state files (session-specific)
       rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json"
-      rm -f "$PROJECT_ROOT/.claude/sisyphus/ralph-verification-${SESSION_ID}.json"
 
       # Clean session-specific ultrawork state
       rm -f "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state-${SESSION_ID}.json"
@@ -348,12 +266,34 @@ EOF
       exit 0
     fi
 
-    # Increment iteration
+    # No oracle approval found - increment iteration and store feedback if rejected
     NEW_ITER=$((ITERATION + 1))
-    echo "$RALPH_STATE" | jq ".iteration = $NEW_ITER" > "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null
+
+    # Check for oracle rejection and extract feedback
+    REJECTION_FEEDBACK=""
+    if REJECTION_FEEDBACK=$(detect_oracle_rejection); then
+      # Append feedback to oracle_feedback array in ralph-state
+      UPDATED_STATE=$(echo "$RALPH_STATE" | jq ".iteration = $NEW_ITER | .oracle_feedback = (.oracle_feedback // []) + [\"$REJECTION_FEEDBACK\"]" 2>&1)
+      if [ $? -eq 0 ]; then
+        echo "$UPDATED_STATE" > "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json"
+      fi
+    else
+      # Just increment iteration
+      UPDATED_STATE=$(echo "$RALPH_STATE" | jq ".iteration = $NEW_ITER" 2>&1)
+      if [ $? -eq 0 ]; then
+        echo "$UPDATED_STATE" > "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json"
+      fi
+    fi
+
+    # Read existing oracle_feedback for display
+    ORACLE_FEEDBACK=$(echo "$RALPH_STATE" | jq -r '.oracle_feedback // [] | join("\n")' 2>/dev/null)
+    FEEDBACK_SECTION=""
+    if [ -n "$ORACLE_FEEDBACK" ] && [ "$ORACLE_FEEDBACK" != "null" ] && [ "$ORACLE_FEEDBACK" != "" ]; then
+      FEEDBACK_SECTION="\n**Previous Oracle Feedback:**\n$ORACLE_FEEDBACK\n"
+    fi
 
     cat << EOF
-{"decision": "block", "reason": "<ralph-loop-continuation>\n\n[RALPH LOOP - ITERATION $NEW_ITER/$MAX_ITER]\n\nYour previous attempt did not output the completion promise. The work is NOT done yet.\n\nCRITICAL INSTRUCTIONS:\n1. Review your progress and the original task\n2. Check your todo list - are ALL items marked complete?\n3. Continue from where you left off\n4. When FULLY complete, output: <promise>$PROMISE</promise>\n5. Do NOT stop until the task is truly done\n\nOriginal task: $PROMPT\n\n</ralph-loop-continuation>\n\n---\n"}
+{"decision": "block", "reason": "<ralph-loop-continuation>\n\n[RALPH LOOP - ITERATION $NEW_ITER/$MAX_ITER]\n\nYour previous attempt did not include oracle approval. The work is NOT verified complete yet.\n$FEEDBACK_SECTION\nCRITICAL INSTRUCTIONS:\n1. Review your progress and the original task\n2. Check your todo list - are ALL items marked complete?\n3. Spawn Oracle to verify: Task(subagent_type=\"oracle\", prompt=\"Verify: $PROMPT\")\n4. If Oracle approves, output: <oracle-approved>VERIFIED_COMPLETE</oracle-approved>\n5. Then output: <promise>$PROMISE</promise>\n6. Do NOT stop until verified by Oracle\n\nOriginal task: $PROMPT\n\n</ralph-loop-continuation>\n\n---\n"}
 EOF
     exit 0
   fi

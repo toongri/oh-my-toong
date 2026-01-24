@@ -1,4 +1,4 @@
-import { readRalphState, readUltraworkState, readRalphVerification, readBackgroundTasks, calculateSessionDuration, getInProgressTodo, isThinkingEnabled } from './state.js';
+import { readRalphState, readUltraworkState, readBackgroundTasks, calculateSessionDuration, getInProgressTodo, isThinkingEnabled } from './state.js';
 import { mkdir, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir, homedir } from 'os';
@@ -110,70 +110,7 @@ describe('state readers', () => {
     });
   });
 
-  describe('readRalphVerification', () => {
-    it('should read session-specific ralph verification from project-local .claude/sisyphus/', async () => {
-      const verification = {
-        pending: true,
-        verification_attempts: 1,
-        max_verification_attempts: 3,
-        original_task: 'Complete implementation',
-        completion_claim: 'Implementation complete',
-        created_at: new Date().toISOString(),
-      };
-
-      // Session-specific file: ralph-verification-test-session.json
-      await writeFile(join(sisyphusDir, 'ralph-verification-test-session.json'), JSON.stringify(verification));
-
-      const result = await readRalphVerification(projectDir, 'test-session');
-
-      expect(result).not.toBeNull();
-      expect(result?.pending).toBe(true);
-      expect(result?.verification_attempts).toBe(1);
-    });
-
-    it('should use default session ID when not provided', async () => {
-      const verification = {
-        pending: true,
-        verification_attempts: 2,
-        max_verification_attempts: 3,
-        original_task: 'Default session task',
-        completion_claim: 'Task complete',
-        created_at: new Date().toISOString(),
-      };
-
-      // Default session file: ralph-verification-default.json
-      await writeFile(join(sisyphusDir, 'ralph-verification-default.json'), JSON.stringify(verification));
-
-      const result = await readRalphVerification(projectDir);
-
-      expect(result).not.toBeNull();
-      expect(result?.verification_attempts).toBe(2);
-    });
-
-    it('should return null for stale verification (>24h old)', async () => {
-      const staleDate = new Date();
-      staleDate.setHours(staleDate.getHours() - 25); // 25 hours ago
-
-      const verification = {
-        pending: true,
-        verification_attempts: 1,
-        max_verification_attempts: 3,
-        original_task: 'Old task',
-        completion_claim: 'Old claim',
-        created_at: staleDate.toISOString(),
-      };
-
-      const staleDir = join(testDir, 'stale-project');
-      const staleSisyphusDir = join(staleDir, '.claude', 'sisyphus');
-      await mkdir(staleSisyphusDir, { recursive: true });
-      // Session-specific stale file
-      await writeFile(join(staleSisyphusDir, 'ralph-verification-stale-session.json'), JSON.stringify(verification));
-
-      const result = await readRalphVerification(staleDir, 'stale-session');
-
-      expect(result).toBeNull();
-    });
-  });
+  // readRalphVerification tests removed - verification is now part of ralph-state (oracle_feedback field)
 
   // readTodos tests removed - todos now come from transcript only for session isolation
 

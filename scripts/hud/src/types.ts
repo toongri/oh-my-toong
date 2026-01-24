@@ -21,6 +21,7 @@ export interface RalphState {
   prompt: string;
   started_at: string;
   linked_ultrawork: boolean;
+  oracle_feedback?: string[];
 }
 
 // ultrawork-state.json
@@ -31,17 +32,6 @@ export interface UltraworkState {
   reinforcement_count: number;
   last_checked_at?: string;
   linked_to_ralph: boolean;
-}
-
-// ralph-verification.json
-export interface RalphVerification {
-  pending: boolean;
-  verification_attempts: number;
-  max_verification_attempts: number;
-  original_task: string;
-  completion_claim: string;
-  oracle_feedback?: string;
-  created_at: string;
 }
 
 // todos.json
@@ -60,7 +50,6 @@ export interface HudData {
   contextPercent: number | null;
   ralph: RalphState | null;
   ultrawork: UltraworkState | null;
-  ralphVerification: RalphVerification | null;
   todos: { completed: number; total: number } | null;
   runningAgents: number;
   backgroundTasks: number;
@@ -112,7 +101,6 @@ export interface HudDataV2 {
   contextPercent: number | null;
   ralph: RalphState | null;
   ultrawork: UltraworkState | null;
-  ralphVerification: RalphVerification | null;
   todos: TodoStats | null;
   runningAgents: number;
   backgroundTasks: number;

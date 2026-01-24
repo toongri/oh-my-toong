@@ -22,15 +22,14 @@ export function formatStatusLine(data: HudData): string {
   // Always show prefix
   parts.push(colorize('[OMT]', ANSI.bold));
 
-  // Ralph status with verification
+  // Ralph status with oracle feedback count
   if (data.ralph?.active) {
     const color = getRalphColor(data.ralph.iteration, data.ralph.max_iterations);
     let ralphText = `ralph:${data.ralph.iteration}/${data.ralph.max_iterations}`;
 
-    // Add verification status if pending
-    if (data.ralphVerification?.pending) {
-      const v = data.ralphVerification;
-      ralphText += ` \u2713${v.verification_attempts}/${v.max_verification_attempts}`;
+    // Add oracle feedback count if any
+    if (data.ralph.oracle_feedback && data.ralph.oracle_feedback.length > 0) {
+      ralphText += ` fb:${data.ralph.oracle_feedback.length}`;
     }
 
     parts.push(colorize(ralphText, color));
@@ -142,8 +141,9 @@ export function formatStatusLineV2(data: HudDataV2): string {
     if (data.ralph.linked_ultrawork) {
       text += '+';
     }
-    if (data.ralphVerification?.pending) {
-      text += ` v${data.ralphVerification.verification_attempts}/${data.ralphVerification.max_verification_attempts}`;
+    // Add oracle feedback count if any
+    if (data.ralph.oracle_feedback && data.ralph.oracle_feedback.length > 0) {
+      text += ` fb:${data.ralph.oracle_feedback.length}`;
     }
     line1Parts.push(colorize(text, color));
   }

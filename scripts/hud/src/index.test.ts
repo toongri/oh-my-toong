@@ -1,12 +1,12 @@
 import { jest } from '@jest/globals';
-import type { StdinInput, RalphState, UltraworkState, RalphVerification, RateLimitData, TodoItem } from './types.js';
+import type { StdinInput, RalphState, UltraworkState, RateLimitData, TodoItem } from './types.js';
 import type { TranscriptResult } from './transcript.js';
 
 // Mock modules before imports
 const mockReadStdin = jest.fn<() => Promise<StdinInput | null>>();
 const mockReadRalphState = jest.fn<(cwd: string, sessionId?: string) => Promise<RalphState | null>>();
 const mockReadUltraworkState = jest.fn<(cwd: string) => Promise<UltraworkState | null>>();
-const mockReadRalphVerification = jest.fn<(cwd: string, sessionId?: string) => Promise<RalphVerification | null>>();
+// readRalphVerification removed - oracle_feedback is now in RalphState
 // readTodos removed - todos now come from transcript only for session isolation
 const mockReadBackgroundTasks = jest.fn<() => Promise<number>>();
 const mockCalculateSessionDuration = jest.fn<(startedAt: Date | null) => number | null>();
@@ -25,7 +25,6 @@ jest.unstable_mockModule('./stdin.js', () => ({
 jest.unstable_mockModule('./state.js', () => ({
   readRalphState: mockReadRalphState,
   readUltraworkState: mockReadUltraworkState,
-  readRalphVerification: mockReadRalphVerification,
   readBackgroundTasks: mockReadBackgroundTasks,
   calculateSessionDuration: mockCalculateSessionDuration,
   getInProgressTodo: mockGetInProgressTodo,
@@ -58,7 +57,6 @@ describe('main', () => {
     // Default mock implementations
     mockReadRalphState.mockResolvedValue(null);
     mockReadUltraworkState.mockResolvedValue(null);
-    mockReadRalphVerification.mockResolvedValue(null);
     mockReadBackgroundTasks.mockResolvedValue(0);
     mockCalculateSessionDuration.mockReturnValue(null);
     // getInProgressTodo now returns synchronously (no Promise)
@@ -132,7 +130,6 @@ describe('main', () => {
 
       expect(mockReadRalphState).toHaveBeenCalledWith('/my/project', 'test-session');
       expect(mockReadUltraworkState).toHaveBeenCalledWith('/my/project');
-      expect(mockReadRalphVerification).toHaveBeenCalledWith('/my/project', 'test-session');
       // Note: getInProgressTodo now takes transcript todos (session isolation)
       expect(mockGetInProgressTodo).toHaveBeenCalledWith([]);
     });
@@ -200,6 +197,7 @@ describe('main', () => {
         prompt: 'test',
         started_at: '2025-01-22T10:00:00+09:00',
         linked_ultrawork: false,
+        oracle_feedback: ['First rejection reason'],
       };
       const ultraworkState: UltraworkState = {
         active: true,
@@ -207,14 +205,6 @@ describe('main', () => {
         original_prompt: 'test',
         reinforcement_count: 0,
         linked_to_ralph: false,
-      };
-      const ralphVerification: RalphVerification = {
-        pending: true,
-        verification_attempts: 1,
-        max_verification_attempts: 3,
-        original_task: 'test',
-        completion_claim: 'done',
-        created_at: '2025-01-22T10:00:00+09:00',
       };
       const rateLimits: RateLimitData = {
         fiveHour: { percent: 25, resetIn: '3h' },
@@ -235,7 +225,6 @@ describe('main', () => {
       });
       mockReadRalphState.mockResolvedValue(ralphState);
       mockReadUltraworkState.mockResolvedValue(ultraworkState);
-      mockReadRalphVerification.mockResolvedValue(ralphVerification);
       mockReadBackgroundTasks.mockResolvedValue(2);
       mockParseTranscript.mockResolvedValue({
         runningAgents: 3,
@@ -256,7 +245,6 @@ describe('main', () => {
         contextPercent: 50,
         ralph: ralphState,
         ultrawork: ultraworkState,
-        ralphVerification: ralphVerification,
         todos: null,
         runningAgents: 3,
         backgroundTasks: 2,

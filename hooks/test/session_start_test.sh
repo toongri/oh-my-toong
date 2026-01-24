@@ -159,13 +159,39 @@ EOF
     assert_output_contains "$output" "RALPH LOOP RESTORED" "Should restore default session ralph state" || return 1
 }
 
-test_session_start_reads_session_specific_verification() {
-    # Check that session-start.sh reads session-specific verification file
-    if grep -q 'ralph-verification-\${SESSION_ID' "$HOOKS_DIR/session-start.sh" || \
-       grep -q 'ralph-verification-.*SESSION_ID' "$HOOKS_DIR/session-start.sh"; then
+test_session_start_no_verification_file_references() {
+    # session-start.sh should NOT reference ralph-verification files (removed)
+    if grep -q 'ralph-verification-' "$HOOKS_DIR/session-start.sh"; then
+        echo "ASSERTION FAILED: session-start.sh should NOT reference ralph-verification files (removed)"
+        return 1
+    else
+        return 0
+    fi
+}
+
+test_session_start_reads_oracle_feedback_from_ralph_state() {
+    # Create ralph state with oracle_feedback
+    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-test-session-feedback.json" << 'EOF'
+{
+  "active": true,
+  "iteration": 3,
+  "max_iterations": 10,
+  "completion_promise": "DONE",
+  "prompt": "test task",
+  "oracle_feedback": ["issue: tests failing", "issue: missing docs"]
+}
+EOF
+
+    # Run with sessionId
+    local output
+    output=$(echo '{"cwd": "'"$TEST_TMP_DIR"'", "sessionId": "test-session-feedback"}' | "$HOOKS_DIR/session-start.sh" 2>&1) || true
+
+    # Should contain oracle feedback in output
+    if echo "$output" | grep -qi "feedback\|oracle"; then
         return 0
     else
-        echo "ASSERTION FAILED: session-start.sh should use session-specific ralph-verification file"
+        echo "ASSERTION FAILED: session-start.sh should display oracle_feedback from ralph-state"
+        echo "  Output: ${output:0:500}"
         return 1
     fi
 }
@@ -270,7 +296,8 @@ main() {
     run_test test_session_start_reads_session_specific_ralph_state
     run_test test_session_start_ignores_other_sessions_ralph_state
     run_test test_session_start_uses_default_when_no_session_id
-    run_test test_session_start_reads_session_specific_verification
+    run_test test_session_start_no_verification_file_references
+    run_test test_session_start_reads_oracle_feedback_from_ralph_state
 
     # Session-based ultrawork state tests
     run_test test_session_start_reads_session_specific_ultrawork_state
