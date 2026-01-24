@@ -2,15 +2,12 @@ import type {
   StdinInput,
   RalphState,
   UltraworkState,
-  TodoItem,
-  TodosState,
   HudData,
   UsageResponse,
   UsageLimit,
   RateLimitData,
   AgentInfo,
   HudDataV2,
-  TodoStats,
 } from './types.js';
 import { ANSI } from './types.js';
 
@@ -100,58 +97,12 @@ describe('types', () => {
 
   // RalphVerification tests removed - oracle_feedback is now in RalphState
 
-  describe('TodoItem', () => {
-    it('should accept valid todo item with pending status', () => {
-      const todo: TodoItem = {
-        content: 'Test item',
-        status: 'pending',
-      };
-
-      expect(todo.status).toBe('pending');
-    });
-
-    it('should accept valid todo item with in_progress status', () => {
-      const todo: TodoItem = {
-        content: 'Test item',
-        status: 'in_progress',
-        activeForm: 'Testing item',
-      };
-
-      expect(todo.status).toBe('in_progress');
-      expect(todo.activeForm).toBe('Testing item');
-    });
-
-    it('should accept valid todo item with completed status', () => {
-      const todo: TodoItem = {
-        content: 'Test item',
-        status: 'completed',
-      };
-
-      expect(todo.status).toBe('completed');
-    });
-  });
-
-  describe('TodosState', () => {
-    it('should accept valid todos state structure', () => {
-      const state: TodosState = {
-        todos: [
-          { content: 'Task 1', status: 'completed' },
-          { content: 'Task 2', status: 'in_progress', activeForm: 'Working on Task 2' },
-          { content: 'Task 3', status: 'pending' },
-        ],
-      };
-
-      expect(state.todos).toHaveLength(3);
-    });
-  });
-
   describe('HudData', () => {
     it('should accept valid hud data structure with null values', () => {
       const data: HudData = {
         contextPercent: null,
         ralph: null,
         ultrawork: null,
-                todos: null,
         runningAgents: 0,
         backgroundTasks: 0,
         activeSkill: null,
@@ -180,7 +131,6 @@ describe('types', () => {
           reinforcement_count: 1,
           linked_to_ralph: true,
         },
-                todos: { completed: 3, total: 5 },
         runningAgents: 2,
         backgroundTasks: 1,
         activeSkill: 'prometheus',
@@ -188,7 +138,6 @@ describe('types', () => {
 
       expect(data.contextPercent).toBe(75);
       expect(data.ralph?.iteration).toBe(2);
-      expect(data.todos?.completed).toBe(3);
     });
   });
 
@@ -318,25 +267,12 @@ describe('types', () => {
     });
   });
 
-  describe('TodoStats', () => {
-    it('should accept valid todo stats structure', () => {
-      const stats: TodoStats = {
-        completed: 3,
-        total: 5,
-      };
-
-      expect(stats.completed).toBe(3);
-      expect(stats.total).toBe(5);
-    });
-  });
-
   describe('HudDataV2', () => {
     it('should accept valid HudDataV2 structure with all null values', () => {
       const data: HudDataV2 = {
         contextPercent: null,
         ralph: null,
         ultrawork: null,
-                todos: null,
         runningAgents: 0,
         backgroundTasks: 0,
         activeSkill: null,
@@ -344,7 +280,6 @@ describe('types', () => {
         agents: [],
         sessionDuration: null,
         thinkingActive: false,
-        inProgressTodo: null,
       };
 
       expect(data.contextPercent).toBeNull();
@@ -352,7 +287,6 @@ describe('types', () => {
       expect(data.agents).toHaveLength(0);
       expect(data.sessionDuration).toBeNull();
       expect(data.thinkingActive).toBe(false);
-      expect(data.inProgressTodo).toBeNull();
     });
 
     it('should accept fully populated HudDataV2 structure', () => {
@@ -374,7 +308,6 @@ describe('types', () => {
           reinforcement_count: 1,
           linked_to_ralph: true,
         },
-                todos: { completed: 3, total: 5 },
         runningAgents: 2,
         backgroundTasks: 1,
         activeSkill: 'prometheus',
@@ -388,7 +321,6 @@ describe('types', () => {
         ],
         sessionDuration: 45,
         thinkingActive: true,
-        inProgressTodo: 'Implementing new feature',
       };
 
       expect(data.contextPercent).toBe(75);
@@ -398,7 +330,6 @@ describe('types', () => {
       expect(data.agents[1].model).toBe('s');
       expect(data.sessionDuration).toBe(45);
       expect(data.thinkingActive).toBe(true);
-      expect(data.inProgressTodo).toBe('Implementing new feature');
     });
   });
 });

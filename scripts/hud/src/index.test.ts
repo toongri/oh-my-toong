@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import type { StdinInput, RalphState, UltraworkState, RateLimitData, TodoItem } from './types.js';
+import type { StdinInput, RalphState, UltraworkState, RateLimitData } from './types.js';
 import type { TranscriptResult } from './transcript.js';
 
 // Mock modules before imports
@@ -15,12 +15,8 @@ const mockLogStart = jest.fn<() => void>();
 const mockLogEnd = jest.fn<() => void>();
 const mockReadRalphState = jest.fn<(cwd: string, sessionId?: string) => Promise<RalphState | null>>();
 const mockReadUltraworkState = jest.fn<(cwd: string) => Promise<UltraworkState | null>>();
-// readRalphVerification removed - oracle_feedback is now in RalphState
-// readTodos removed - todos now come from transcript only for session isolation
 const mockReadBackgroundTasks = jest.fn<() => Promise<number>>();
 const mockCalculateSessionDuration = jest.fn<(startedAt: Date | null) => number | null>();
-// getInProgressTodo now takes TodoItem[] and returns synchronously
-const mockGetInProgressTodo = jest.fn<(todos: TodoItem[]) => string | null>();
 const mockIsThinkingEnabled = jest.fn<() => Promise<boolean>>();
 const mockParseTranscript = jest.fn<(path: string) => Promise<TranscriptResult>>();
 const mockFetchRateLimits = jest.fn<() => Promise<RateLimitData | null>>();
@@ -36,7 +32,6 @@ jest.unstable_mockModule('./state.js', () => ({
   readUltraworkState: mockReadUltraworkState,
   readBackgroundTasks: mockReadBackgroundTasks,
   calculateSessionDuration: mockCalculateSessionDuration,
-  getInProgressTodo: mockGetInProgressTodo,
   isThinkingEnabled: mockIsThinkingEnabled,
 }));
 
@@ -78,10 +73,8 @@ describe('main', () => {
     mockReadUltraworkState.mockResolvedValue(null);
     mockReadBackgroundTasks.mockResolvedValue(0);
     mockCalculateSessionDuration.mockReturnValue(null);
-    // getInProgressTodo now returns synchronously (no Promise)
-    mockGetInProgressTodo.mockReturnValue(null);
     mockIsThinkingEnabled.mockResolvedValue(false);
-    mockParseTranscript.mockResolvedValue({ runningAgents: 0, activeSkill: null, agents: [], sessionStartedAt: null, todos: [] });
+    mockParseTranscript.mockResolvedValue({ runningAgents: 0, activeSkill: null, agents: [], sessionStartedAt: null });
     mockFetchRateLimits.mockResolvedValue(null);
     mockFormatStatusLineV2.mockReturnValue('[OMT] ctx:50%');
     mockFormatMinimalStatus.mockReturnValue('[OMT] ready');
@@ -149,8 +142,6 @@ describe('main', () => {
 
       expect(mockReadRalphState).toHaveBeenCalledWith('/my/project', 'test-session');
       expect(mockReadUltraworkState).toHaveBeenCalledWith('/my/project');
-      // Note: getInProgressTodo now takes transcript todos (session isolation)
-      expect(mockGetInProgressTodo).toHaveBeenCalledWith([]);
     });
 
     it('fetches rate limits', async () => {
@@ -250,11 +241,8 @@ describe('main', () => {
         activeSkill: 'prometheus',
         agents: [{ type: 'M', model: 'o', id: 'main-1' }, { type: 'S', model: 's', id: 'sub-1' }],
         sessionStartedAt,
-        todos: [],
       });
       mockFetchRateLimits.mockResolvedValue(rateLimits);
-      // getInProgressTodo now returns synchronously
-      mockGetInProgressTodo.mockReturnValue('Working on task...');
       mockIsThinkingEnabled.mockResolvedValue(true);
       mockCalculateSessionDuration.mockReturnValue(45);
 
@@ -264,7 +252,6 @@ describe('main', () => {
         contextPercent: 50,
         ralph: ralphState,
         ultrawork: ultraworkState,
-        todos: null,
         runningAgents: 3,
         backgroundTasks: 2,
         activeSkill: 'prometheus',
@@ -272,7 +259,6 @@ describe('main', () => {
         agents: [{ type: 'M', model: 'o', id: 'main-1' }, { type: 'S', model: 's', id: 'sub-1' }],
         sessionDuration: 45,
         thinkingActive: true,
-        inProgressTodo: 'Working on task...',
       });
     });
 
@@ -295,75 +281,11 @@ describe('main', () => {
         activeSkill: null,
         agents: [],
         sessionStartedAt,
-        todos: [],
       });
 
       await main();
 
       expect(mockCalculateSessionDuration).toHaveBeenCalledWith(sessionStartedAt);
-    });
-
-    it('shows null todos when transcript todos are empty (session isolation)', async () => {
-      // Transcript todos are the ONLY source - no file fallback
-      mockReadStdin.mockResolvedValue({
-        hook_event_name: 'Status',
-        session_id: 'test-session',
-        transcript_path: '/path/to/transcript.jsonl',
-        cwd: '/test/cwd',
-        context_window: {
-          used_percentage: 50,
-          total_input_tokens: 10000,
-          context_window_size: 200000,
-        },
-      });
-      // Transcript todos are empty (current session has no todos)
-      mockParseTranscript.mockResolvedValue({
-        runningAgents: 0,
-        activeSkill: null,
-        agents: [],
-        sessionStartedAt: null,
-        todos: [],
-      });
-
-      await main();
-
-      // Should use null because transcript todos are empty
-      expect(mockFormatStatusLineV2).toHaveBeenCalledWith(
-        expect.objectContaining({ todos: null })
-      );
-    });
-
-    it('uses transcript todos when available', async () => {
-      mockReadStdin.mockResolvedValue({
-        hook_event_name: 'Status',
-        session_id: 'test-session',
-        transcript_path: '/path/to/transcript.jsonl',
-        cwd: '/test/cwd',
-        context_window: {
-          used_percentage: 50,
-          total_input_tokens: 10000,
-          context_window_size: 200000,
-        },
-      });
-      // Transcript todos from current session
-      mockParseTranscript.mockResolvedValue({
-        runningAgents: 0,
-        activeSkill: null,
-        agents: [],
-        sessionStartedAt: null,
-        todos: [
-          { content: 'Task 1', status: 'completed' },
-          { content: 'Task 2', status: 'in_progress' },
-          { content: 'Task 3', status: 'pending' },
-        ],
-      });
-
-      await main();
-
-      // Should use transcript todos: 1 completed out of 3 total
-      expect(mockFormatStatusLineV2).toHaveBeenCalledWith(
-        expect.objectContaining({ todos: { completed: 1, total: 3 } })
-      );
     });
   });
 
@@ -443,12 +365,12 @@ describe('main', () => {
           context_window_size: 200000,
         },
       });
-      mockFormatStatusLineV2.mockReturnValue('[OMT] | ctx:50%\ntodos:3/5 | session:45m');
+      mockFormatStatusLineV2.mockReturnValue('[OMT] | ctx:50%\nultrawork | session:45m');
 
       await main();
 
       // Should convert spaces on both lines to non-breaking spaces
-      expect(consoleLogSpy).toHaveBeenCalledWith('[OMT]\u00A0|\u00A0ctx:50%\ntodos:3/5\u00A0|\u00A0session:45m');
+      expect(consoleLogSpy).toHaveBeenCalledWith('[OMT]\u00A0|\u00A0ctx:50%\nultrawork\u00A0|\u00A0session:45m');
     });
 
     it('converts spaces in minimal status output', async () => {
@@ -533,34 +455,6 @@ describe('main', () => {
 
       expect(mockLogInfo).toHaveBeenCalledWith(expect.stringContaining('transcript_path'));
       expect(mockLogInfo).toHaveBeenCalledWith(expect.stringContaining('/path/to/transcript.jsonl'));
-    });
-
-    it('logs todo counts after transcript parse', async () => {
-      mockReadStdin.mockResolvedValue({
-        hook_event_name: 'Status',
-        session_id: 'test-session',
-        transcript_path: '/path/to/transcript.jsonl',
-        cwd: '/test/cwd',
-        context_window: {
-          used_percentage: 50,
-          total_input_tokens: 10000,
-          context_window_size: 200000,
-        },
-      });
-      mockParseTranscript.mockResolvedValue({
-        runningAgents: 0,
-        activeSkill: null,
-        agents: [],
-        sessionStartedAt: null,
-        todos: [
-          { content: 'Task 1', status: 'completed' },
-          { content: 'Task 2', status: 'pending' },
-        ],
-      });
-
-      await main();
-
-      expect(mockLogInfo).toHaveBeenCalledWith(expect.stringContaining('todos'));
     });
 
     it('calls logEnd on successful completion', async () => {

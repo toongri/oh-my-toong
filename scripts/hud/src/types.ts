@@ -34,23 +34,11 @@ export interface UltraworkState {
   linked_to_ralph: boolean;
 }
 
-// todos.json
-export interface TodoItem {
-  content: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  activeForm?: string;
-}
-
-export interface TodosState {
-  todos: TodoItem[];
-}
-
 // Aggregated HUD data
 export interface HudData {
   contextPercent: number | null;
   ralph: RalphState | null;
   ultrawork: UltraworkState | null;
-  todos: { completed: number; total: number } | null;
   runningAgents: number;
   backgroundTasks: number;
   activeSkill: string | null;
@@ -60,7 +48,6 @@ export interface HudData {
 export interface TranscriptData {
   runningAgents: number;
   activeSkill: string | null;
-  todos: TodoItem[];  // Todos extracted from TodoWrite/TaskCreate calls
 }
 
 // OAuth usage API response
@@ -90,18 +77,11 @@ export interface AgentInfo {
   name?: string;  // subagent_type from Task tool (e.g., 'sisyphus-junior', 'oracle')
 }
 
-// Todo statistics
-export interface TodoStats {
-  completed: number;
-  total: number;
-}
-
 // Enhanced HUD data (extends existing)
 export interface HudDataV2 {
   contextPercent: number | null;
   ralph: RalphState | null;
   ultrawork: UltraworkState | null;
-  todos: TodoStats | null;
   runningAgents: number;
   backgroundTasks: number;
   activeSkill: string | null;
@@ -110,7 +90,6 @@ export interface HudDataV2 {
   agents: AgentInfo[];
   sessionDuration: number | null;  // in minutes
   thinkingActive: boolean;
-  inProgressTodo: string | null;
 }
 
 // ANSI color codes

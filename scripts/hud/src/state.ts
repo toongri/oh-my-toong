@@ -1,7 +1,7 @@
 import { readFile, readdir, stat } from 'fs/promises';
 import { join } from 'path';
 import { homedir } from 'os';
-import type { RalphState, UltraworkState, TodosState, TodoItem } from './types.js';
+import type { RalphState, UltraworkState } from './types.js';
 
 /**
  * Maximum age for state files to be considered "active".
@@ -33,25 +33,6 @@ async function readJsonFile<T>(path: string): Promise<T | null> {
 }
 
 /**
- * Extract todos from content that could be either:
- * - Direct array: TodoItem[]
- * - Wrapper object: { todos: TodoItem[] }
- *
- * This handles the schema mismatch between HUD's expected format
- * and Claude Code TaskCreate's direct array format.
- */
-function extractTodos(content: unknown): TodoItem[] {
-  if (Array.isArray(content)) {
-    return content as TodoItem[];
-  }
-  if (content && typeof content === 'object' && 'todos' in content) {
-    const wrapper = content as TodosState;
-    return wrapper.todos || [];
-  }
-  return [];
-}
-
-/**
  * Find and read a state file from project-local path only.
  * Returns null if file doesn't exist or is stale (>2 hours old).
  *
@@ -76,9 +57,6 @@ export async function readUltraworkState(cwd: string): Promise<UltraworkState | 
   return findStateFile<UltraworkState>(cwd, 'ultrawork-state.json');
 }
 
-// readTodos removed - todos now come from transcript only for session isolation
-// File-based todos caused accumulation from past sessions
-
 export async function readBackgroundTasks(): Promise<number> {
   const tasksDir = join(homedir(), '.claude', 'background-tasks');
   try {
@@ -94,18 +72,6 @@ export function calculateSessionDuration(startedAt: Date | null): number | null 
   if (!startedAt) return null;
   const now = new Date();
   return Math.floor((now.getTime() - startedAt.getTime()) / 60000);
-}
-
-// Get the in-progress todo's activeForm (truncated) from transcript todos
-export function getInProgressTodo(todos: TodoItem[]): string | null {
-  // Find first in_progress todo
-  const inProgress = todos.find(t => t.status === 'in_progress');
-  if (!inProgress) return null;
-
-  // Return activeForm or content (prefer activeForm)
-  const text = inProgress.activeForm || inProgress.content;
-  // Truncate to 25 chars
-  return text.length > 25 ? text.substring(0, 25) + '...' : text;
 }
 
 // Check if extended thinking is enabled (from stdin model or settings)

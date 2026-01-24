@@ -72,12 +72,6 @@ function calculateSessionDuration(startedAt) {
   const now = /* @__PURE__ */ new Date();
   return Math.floor((now.getTime() - startedAt.getTime()) / 6e4);
 }
-function getInProgressTodo(todos) {
-  const inProgress = todos.find((t) => t.status === "in_progress");
-  if (!inProgress) return null;
-  const text = inProgress.activeForm || inProgress.content;
-  return text.length > 25 ? text.substring(0, 25) + "..." : text;
-}
 async function isThinkingEnabled() {
   return false;
 }
@@ -168,9 +162,6 @@ function initLogger(component, projectRoot, sessionId) {
   logFile = join2(logDir, `${component}-${sanitizedSession}.log`);
   initialized = true;
 }
-function logDebug(message) {
-  log(LogLevel.DEBUG, message);
-}
 function logInfo(message) {
   log(LogLevel.INFO, message);
 }
@@ -195,8 +186,7 @@ async function parseTranscript(transcriptPath) {
     runningAgents: 0,
     activeSkill: null,
     agents: [],
-    sessionStartedAt: null,
-    todos: []
+    sessionStartedAt: null
   };
   try {
     const fileStream = createReadStream(transcriptPath);
@@ -205,9 +195,6 @@ async function parseTranscript(transcriptPath) {
       crlfDelay: Infinity
     });
     const runningAgents = /* @__PURE__ */ new Map();
-    const todosMap = /* @__PURE__ */ new Map();
-    const pendingTaskCreates = /* @__PURE__ */ new Map();
-    const taskIdToSubject = /* @__PURE__ */ new Map();
     let earliestTimestamp = null;
     for await (const line of rl) {
       try {
@@ -251,61 +238,10 @@ async function parseTranscript(transcriptPath) {
                 });
               } else if (item.name === "Skill" && item.input?.skill) {
                 result.activeSkill = item.input.skill;
-              } else if (item.name === "TaskCreate" && item.input) {
-                const input = item.input;
-                const content = input.subject || input.description || "";
-                if (content) {
-                  logDebug(`TaskCreate: subject="${content}"`);
-                  todosMap.set(content, {
-                    content,
-                    status: "pending",
-                    activeForm: input.activeForm
-                  });
-                  if (item.id) {
-                    pendingTaskCreates.set(item.id, content);
-                  }
-                }
-              } else if (item.name === "TaskUpdate" && item.input) {
-                const input = item.input;
-                if (input.taskId && input.status) {
-                  logDebug(`TaskUpdate: taskId="${input.taskId}", status="${input.status}"`);
-                  const subject = taskIdToSubject.get(input.taskId);
-                  if (subject && todosMap.has(subject)) {
-                    const todo = todosMap.get(subject);
-                    todosMap.set(subject, {
-                      ...todo,
-                      status: input.status
-                    });
-                  } else {
-                    for (const [key, todo] of todosMap.entries()) {
-                      if (key.includes(input.taskId) || input.taskId === key) {
-                        todosMap.set(key, {
-                          ...todo,
-                          status: input.status
-                        });
-                        break;
-                      }
-                    }
-                  }
-                }
               }
             }
             if (item.type === "tool_result" && item.tool_use_id) {
               runningAgents.delete(item.tool_use_id);
-              const taskResult = entry.toolUseResult?.task;
-              if (taskResult?.id && pendingTaskCreates.has(item.tool_use_id)) {
-                const subject = pendingTaskCreates.get(item.tool_use_id);
-                taskIdToSubject.set(taskResult.id, subject);
-                pendingTaskCreates.delete(item.tool_use_id);
-              } else if (typeof item.content === "string" && pendingTaskCreates.has(item.tool_use_id)) {
-                const match = item.content.match(/Task #(\d+)/i);
-                if (match) {
-                  const taskId = match[1];
-                  const subject = pendingTaskCreates.get(item.tool_use_id);
-                  taskIdToSubject.set(taskId, subject);
-                  pendingTaskCreates.delete(item.tool_use_id);
-                }
-              }
             }
           }
         }
@@ -317,7 +253,6 @@ async function parseTranscript(transcriptPath) {
     result.runningAgents = runningAgents.size;
     result.agents = Array.from(runningAgents.values());
     result.sessionStartedAt = earliestTimestamp;
-    result.todos = Array.from(todosMap.values());
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logError(`Failed to read transcript file: ${errorMessage}`);
@@ -502,6 +437,9 @@ function formatStatusLineV2(data) {
     const names = data.agents.map((a) => a.name || `${a.type}${a.model}`).join(", ");
     line1Parts.push(colorize(`agents:${names}`, ANSI.green));
   }
+  if (data.thinkingActive) {
+    line1Parts.push(colorize("thinking", ANSI.cyan));
+  }
   if (data.ralph?.active) {
     const color = getRalphColor(data.ralph.iteration, data.ralph.max_iterations);
     let text = `ralph:${data.ralph.iteration}/${data.ralph.max_iterations}`;
@@ -511,21 +449,10 @@ function formatStatusLineV2(data) {
     if (data.ralph.oracle_feedback && data.ralph.oracle_feedback.length > 0) {
       text += ` fb:${data.ralph.oracle_feedback.length}`;
     }
-    line1Parts.push(colorize(text, color));
+    line2Parts.push(colorize(text, color));
   }
   if (data.ultrawork?.active && !data.ultrawork.linked_to_ralph) {
-    line1Parts.push(colorize("ultrawork", ANSI.green));
-  }
-  if (data.thinkingActive) {
-    line1Parts.push(colorize("thinking", ANSI.cyan));
-  }
-  if (data.todos && data.todos.completed < data.todos.total) {
-    const { completed, total } = data.todos;
-    let todoText = `todos:${completed}/${total}`;
-    if (data.inProgressTodo) {
-      todoText += ` (${data.inProgressTodo})`;
-    }
-    line2Parts.push(colorize(todoText, ANSI.yellow));
+    line2Parts.push(colorize("ultrawork", ANSI.green));
   }
   if (data.sessionDuration !== null && data.sessionDuration > 0) {
     const hours = Math.floor(data.sessionDuration / 60);
@@ -566,31 +493,22 @@ async function main() {
       readRalphState(cwd, sessionId),
       readUltraworkState(cwd),
       readBackgroundTasks(),
-      input.transcript_path ? parseTranscript(input.transcript_path) : Promise.resolve({ runningAgents: 0, activeSkill: null, agents: [], sessionStartedAt: null, todos: [] }),
+      input.transcript_path ? parseTranscript(input.transcript_path) : Promise.resolve({ runningAgents: 0, activeSkill: null, agents: [], sessionStartedAt: null }),
       fetchRateLimits(),
       isThinkingEnabled()
     ]);
-    const inProgressTodo = getInProgressTodo(transcriptData.todos);
-    const transcriptTodos = transcriptData.todos;
-    let todos = null;
-    if (transcriptTodos.length > 0) {
-      const completed = transcriptTodos.filter((t) => t.status === "completed").length;
-      todos = { completed, total: transcriptTodos.length };
-    }
-    logInfo(`Transcript parsed: todos=${transcriptTodos.length}, runningAgents=${transcriptData.runningAgents}`);
+    logInfo(`Transcript parsed: runningAgents=${transcriptData.runningAgents}`);
     const hudData = {
       contextPercent: input.context_window?.used_percentage ?? null,
       ralph,
       ultrawork,
-      todos,
       runningAgents: transcriptData.runningAgents,
       backgroundTasks,
       activeSkill: transcriptData.activeSkill,
       rateLimits,
       agents: transcriptData.agents,
       sessionDuration: calculateSessionDuration(transcriptData.sessionStartedAt),
-      thinkingActive,
-      inProgressTodo
+      thinkingActive
     };
     console.log(toNonBreakingSpaces(formatStatusLineV2(hudData)));
     logEnd();

@@ -30,7 +30,6 @@ describe('formatStatusLine', () => {
     contextPercent: null,
     ralph: null,
     ultrawork: null,
-    todos: null,
     runningAgents: 0,
     backgroundTasks: 0,
     activeSkill: null,
@@ -219,44 +218,6 @@ describe('formatStatusLine', () => {
     });
   });
 
-  describe('todos', () => {
-    it('shows todos completion status', () => {
-      const data: HudData = {
-        ...emptyData,
-        todos: { completed: 3, total: 5 },
-      };
-      const result = formatStatusLine(data);
-      expect(result).toContain('todos:3/5');
-    });
-
-    it('shows todos when some are incomplete', () => {
-      const data: HudData = {
-        ...emptyData,
-        todos: { completed: 4, total: 5 },
-      };
-      const result = formatStatusLine(data);
-      expect(result).toContain('todos:4/5');
-      expect(result).toContain(ANSI.yellow);
-    });
-
-    it('shows yellow when todos incomplete', () => {
-      const data: HudData = {
-        ...emptyData,
-        todos: { completed: 2, total: 5 },
-      };
-      const result = formatStatusLine(data);
-      expect(result).toContain(ANSI.yellow);
-    });
-
-    it('does not show todos when all completed', () => {
-      const data: HudData = {
-        ...emptyData,
-        todos: { completed: 5, total: 5 },
-      };
-      const result = formatStatusLine(data);
-      expect(result).not.toContain('todos:');
-    });
-  });
 
   describe('active skill', () => {
     it('shows active skill name', () => {
@@ -325,7 +286,6 @@ describe('formatStatusLineV2', () => {
     contextPercent: null,
     ralph: null,
     ultrawork: null,
-    todos: null,
     runningAgents: 0,
     backgroundTasks: 0,
     activeSkill: null,
@@ -333,7 +293,6 @@ describe('formatStatusLineV2', () => {
     agents: [],
     sessionDuration: null,
     thinkingActive: false,
-    inProgressTodo: null,
   };
 
   describe('prefix', () => {
@@ -590,52 +549,40 @@ describe('formatStatusLineV2', () => {
     });
   });
 
-  describe('line 2 - todos', () => {
-    it('shows todos count on line 2', () => {
+  describe('line 2 - ralph and ultrawork', () => {
+    it('shows ralph on line 2 when active', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        todos: { completed: 3, total: 5 },
+        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10 }),
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('todos:3/5');
+      const lines = result.split('\n');
+      expect(lines.length).toBe(2);
+      expect(lines[1]).toContain('ralph:3/10');
     });
 
-    it('includes in-progress todo text', () => {
+    it('shows ultrawork on line 2 when active', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        todos: { completed: 3, total: 5 },
-        inProgressTodo: 'Working on tests',
+        ultrawork: createUltraworkState({ active: true }),
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('todos:3/5 (Working on tests)');
+      const lines = result.split('\n');
+      expect(lines.length).toBe(2);
+      expect(lines[1]).toContain('ultrawork');
     });
 
-    it('shows todos when some are incomplete', () => {
+    it('shows both ralph and ultrawork on line 2 when both active', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        todos: { completed: 4, total: 5 },
+        ralph: createRalphState({ active: true, iteration: 2, max_iterations: 10 }),
+        ultrawork: createUltraworkState({ active: true }),
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('todos:4/5');
-      expect(result).toContain(ANSI.yellow);
-    });
-
-    it('applies yellow color when todos incomplete', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        todos: { completed: 2, total: 5 },
-      };
-      const result = formatStatusLineV2(data);
-      expect(result).toContain(ANSI.yellow);
-    });
-
-    it('does not show todos when all completed', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        todos: { completed: 5, total: 5 },
-      };
-      const result = formatStatusLineV2(data);
-      expect(result).not.toContain('todos:');
+      const lines = result.split('\n');
+      expect(lines.length).toBe(2);
+      expect(lines[1]).toContain('ralph:2/10');
+      expect(lines[1]).toContain('ultrawork');
     });
   });
 
@@ -692,11 +639,22 @@ describe('formatStatusLineV2', () => {
       expect(result.split('\n').length).toBe(1);
     });
 
-    it('returns 2 lines when line 2 content exists', () => {
+    it('returns 2 lines when line 2 content exists (ralph active)', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         contextPercent: 50,
-        todos: { completed: 3, total: 5 },
+        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10 }),
+      };
+      const result = formatStatusLineV2(data);
+      const lines = result.split('\n');
+      expect(lines.length).toBe(2);
+    });
+
+    it('returns 2 lines when line 2 content exists (ultrawork active)', () => {
+      const data: HudDataV2 = {
+        ...emptyDataV2,
+        contextPercent: 50,
+        ultrawork: createUltraworkState({ active: true }),
       };
       const result = formatStatusLineV2(data);
       const lines = result.split('\n');
@@ -708,7 +666,7 @@ describe('formatStatusLineV2', () => {
         ...emptyDataV2,
         contextPercent: 50,
         agents: [{ type: 'S', model: 's', id: 'sub-1', name: 'explore' }],
-        todos: { completed: 3, total: 5 },
+        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10 }),
         sessionDuration: 45,
       };
       const result = formatStatusLineV2(data);
@@ -718,28 +676,26 @@ describe('formatStatusLineV2', () => {
       expect(lines[0]).toContain('agents:explore');
     });
 
-    it('has line 2 with todos and session', () => {
+    it('has line 2 with ralph and session', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        todos: { completed: 3, total: 5 },
+        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10 }),
         sessionDuration: 45,
       };
       const result = formatStatusLineV2(data);
       const lines = result.split('\n');
-      expect(lines[1]).toContain('todos:3/5');
+      expect(lines[1]).toContain('ralph:3/10');
       expect(lines[1]).toContain('session:45m');
     });
   });
 
   describe('element order', () => {
-    it('maintains correct order: [OMT] | rateLimits | ctx | agents | ralph | ultrawork | thinking', () => {
+    it('maintains correct order on line 1: [OMT] | rateLimits | ctx | agents | thinking', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         contextPercent: 50,
         rateLimits: { fiveHour: { percent: 30, resetIn: '2h' }, sevenDay: null },
         agents: [{ type: 'S', model: 's', id: 'sub-1', name: 'sisyphus-junior' }],
-        ralph: createRalphState({ active: true, iteration: 2, max_iterations: 10 }),
-        ultrawork: createUltraworkState({ active: true }),
         thinkingActive: true,
       };
       const result = formatStatusLineV2(data);
@@ -749,16 +705,30 @@ describe('formatStatusLineV2', () => {
       const rateIndex = line1.indexOf('5h:');
       const ctxIndex = line1.indexOf('ctx:');
       const agentsIndex = line1.indexOf('agents:');
-      const ralphIndex = line1.indexOf('ralph:');
-      const ultraworkIndex = line1.indexOf('ultrawork');
       const thinkingIndex = line1.indexOf('thinking');
 
       expect(omtIndex).toBeLessThan(rateIndex);
       expect(rateIndex).toBeLessThan(ctxIndex);
       expect(ctxIndex).toBeLessThan(agentsIndex);
-      expect(agentsIndex).toBeLessThan(ralphIndex);
+      expect(agentsIndex).toBeLessThan(thinkingIndex);
+    });
+
+    it('maintains correct order on line 2: ralph | ultrawork | session', () => {
+      const data: HudDataV2 = {
+        ...emptyDataV2,
+        ralph: createRalphState({ active: true, iteration: 2, max_iterations: 10 }),
+        ultrawork: createUltraworkState({ active: true }),
+        sessionDuration: 45,
+      };
+      const result = formatStatusLineV2(data);
+      const line2 = result.split('\n')[1];
+
+      const ralphIndex = line2.indexOf('ralph:');
+      const ultraworkIndex = line2.indexOf('ultrawork');
+      const sessionIndex = line2.indexOf('session:');
+
       expect(ralphIndex).toBeLessThan(ultraworkIndex);
-      expect(ultraworkIndex).toBeLessThan(thinkingIndex);
+      expect(ultraworkIndex).toBeLessThan(sessionIndex);
     });
   });
 
@@ -767,7 +737,7 @@ describe('formatStatusLineV2', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         contextPercent: 50,
-        ultrawork: createUltraworkState({ active: true }),
+        thinkingActive: true,
       };
       const result = formatStatusLineV2(data);
       expect(result).toContain(' | ');
@@ -776,7 +746,7 @@ describe('formatStatusLineV2', () => {
     it('uses pipe separator between line 2 elements', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        todos: { completed: 3, total: 5 },
+        ultrawork: createUltraworkState({ active: true }),
         sessionDuration: 45,
       };
       const result = formatStatusLineV2(data);

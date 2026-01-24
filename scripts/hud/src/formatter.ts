@@ -57,12 +57,6 @@ export function formatStatusLine(data: HudData): string {
     parts.push(colorize(`bg:${data.backgroundTasks}`, ANSI.green));
   }
 
-  // Todos completion - only show if there are incomplete tasks
-  if (data.todos && data.todos.completed < data.todos.total) {
-    const { completed, total } = data.todos;
-    parts.push(colorize(`todos:${completed}/${total}`, ANSI.yellow));
-  }
-
   // Active skill (truncate to 15 chars)
   if (data.activeSkill) {
     const skill = data.activeSkill.length > 15
@@ -132,7 +126,12 @@ export function formatStatusLineV2(data: HudDataV2): string {
     line1Parts.push(colorize(`agents:${names}`, ANSI.green));
   }
 
-  // Ralph (only when active)
+  // Thinking indicator
+  if (data.thinkingActive) {
+    line1Parts.push(colorize('thinking', ANSI.cyan));
+  }
+
+  // Line 2: Ralph (only when active)
   if (data.ralph?.active) {
     const color = getRalphColor(data.ralph.iteration, data.ralph.max_iterations);
     let text = `ralph:${data.ralph.iteration}/${data.ralph.max_iterations}`;
@@ -144,27 +143,12 @@ export function formatStatusLineV2(data: HudDataV2): string {
     if (data.ralph.oracle_feedback && data.ralph.oracle_feedback.length > 0) {
       text += ` fb:${data.ralph.oracle_feedback.length}`;
     }
-    line1Parts.push(colorize(text, color));
+    line2Parts.push(colorize(text, color));
   }
 
-  // Ultrawork (only when active and not linked to ralph)
+  // Line 2: Ultrawork (only when active and not linked to ralph)
   if (data.ultrawork?.active && !data.ultrawork.linked_to_ralph) {
-    line1Parts.push(colorize('ultrawork', ANSI.green));
-  }
-
-  // Thinking indicator
-  if (data.thinkingActive) {
-    line1Parts.push(colorize('thinking', ANSI.cyan));
-  }
-
-  // Line 2: todos with in-progress task - only show if there are incomplete tasks
-  if (data.todos && data.todos.completed < data.todos.total) {
-    const { completed, total } = data.todos;
-    let todoText = `todos:${completed}/${total}`;
-    if (data.inProgressTodo) {
-      todoText += ` (${data.inProgressTodo})`;
-    }
-    line2Parts.push(colorize(todoText, ANSI.yellow));
+    line2Parts.push(colorize('ultrawork', ANSI.green));
   }
 
   // Session duration

@@ -1,5 +1,5 @@
 import { readStdin } from './stdin.js';
-import { readRalphState, readUltraworkState, readBackgroundTasks, calculateSessionDuration, getInProgressTodo, isThinkingEnabled } from './state.js';
+import { readRalphState, readUltraworkState, readBackgroundTasks, calculateSessionDuration, isThinkingEnabled } from './state.js';
 import { parseTranscript } from './transcript.js';
 import { fetchRateLimits } from './usage-api.js';
 import { formatStatusLineV2, formatMinimalStatus } from './formatter.js';
@@ -48,32 +48,18 @@ export async function main(): Promise<void> {
       readBackgroundTasks(),
       input.transcript_path
         ? parseTranscript(input.transcript_path)
-        : Promise.resolve({ runningAgents: 0, activeSkill: null, agents: [], sessionStartedAt: null, todos: [] }),
+        : Promise.resolve({ runningAgents: 0, activeSkill: null, agents: [], sessionStartedAt: null }),
       fetchRateLimits(),
       isThinkingEnabled(),
     ]);
 
-    // Get in-progress todo from transcript todos (synchronous, session-isolated)
-    const inProgressTodo = getInProgressTodo(transcriptData.todos);
-
-    // Use ONLY transcript-based todos for session isolation
-    // File-based todos are not used to prevent accumulation from past sessions
-    const transcriptTodos = transcriptData.todos;
-    let todos: { completed: number; total: number } | null = null;
-
-    if (transcriptTodos.length > 0) {
-      const completed = transcriptTodos.filter(t => t.status === 'completed').length;
-      todos = { completed, total: transcriptTodos.length };
-    }
-
     // Log transcript parsing results
-    logInfo(`Transcript parsed: todos=${transcriptTodos.length}, runningAgents=${transcriptData.runningAgents}`);
+    logInfo(`Transcript parsed: runningAgents=${transcriptData.runningAgents}`);
 
     const hudData: HudDataV2 = {
       contextPercent: input.context_window?.used_percentage ?? null,
       ralph,
       ultrawork,
-      todos,
       runningAgents: transcriptData.runningAgents,
       backgroundTasks,
       activeSkill: transcriptData.activeSkill,
@@ -81,7 +67,6 @@ export async function main(): Promise<void> {
       agents: transcriptData.agents,
       sessionDuration: calculateSessionDuration(transcriptData.sessionStartedAt),
       thinkingActive,
-      inProgressTodo,
     };
 
     // Format and output with non-breaking spaces for terminal alignment

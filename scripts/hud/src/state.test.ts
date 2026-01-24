@@ -1,4 +1,4 @@
-import { readRalphState, readUltraworkState, readBackgroundTasks, calculateSessionDuration, getInProgressTodo, isThinkingEnabled } from './state.js';
+import { readRalphState, readUltraworkState, readBackgroundTasks, calculateSessionDuration, isThinkingEnabled } from './state.js';
 import { mkdir, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir, homedir } from 'os';
@@ -148,73 +148,6 @@ describe('state readers', () => {
       const justNow = new Date(Date.now() - 30 * 1000); // 30 seconds ago
       const result = calculateSessionDuration(justNow);
       expect(result).toBe(0);
-    });
-  });
-
-  describe('getInProgressTodo', () => {
-    // Tests updated to use new signature: getInProgressTodo(todos: TodoItem[])
-    // Function now accepts transcript todos directly for session isolation
-
-    it('should return activeForm of in_progress todo when available', () => {
-      const todos = [
-        { content: 'Task 1', status: 'completed' as const },
-        { content: 'Task 2', status: 'in_progress' as const, activeForm: 'Working on Task 2' },
-        { content: 'Task 3', status: 'pending' as const },
-      ];
-
-      const result = getInProgressTodo(todos);
-
-      expect(result).toBe('Working on Task 2');
-    });
-
-    it('should return content when activeForm is not available', () => {
-      const todos = [
-        { content: 'Task 1', status: 'completed' as const },
-        { content: 'In Progress Task', status: 'in_progress' as const },
-      ];
-
-      const result = getInProgressTodo(todos);
-
-      expect(result).toBe('In Progress Task');
-    });
-
-    it('should truncate text longer than 25 characters', () => {
-      const todos = [
-        { content: 'This is a very long task name that exceeds twenty five characters', status: 'in_progress' as const, activeForm: 'This is a very long active form text' },
-      ];
-
-      const result = getInProgressTodo(todos);
-
-      expect(result).toBe('This is a very long activ...');
-      expect(result?.length).toBe(28); // 25 chars + '...'
-    });
-
-    it('should return null when no in_progress todo exists', () => {
-      const todos = [
-        { content: 'Task 1', status: 'completed' as const },
-        { content: 'Task 2', status: 'pending' as const },
-      ];
-
-      const result = getInProgressTodo(todos);
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null when empty array is passed', () => {
-      const result = getInProgressTodo([]);
-
-      expect(result).toBeNull();
-    });
-
-    it('should return first in_progress todo when multiple exist', () => {
-      const todos = [
-        { content: 'Task 1', status: 'in_progress' as const, activeForm: 'First Active' },
-        { content: 'Task 2', status: 'in_progress' as const, activeForm: 'Second Active' },
-      ];
-
-      const result = getInProgressTodo(todos);
-
-      expect(result).toBe('First Active');
     });
   });
 

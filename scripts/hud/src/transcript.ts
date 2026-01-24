@@ -1,27 +1,13 @@
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
-import { logDebug, logError } from '../../lib/dist/logging.js';
-import type { AgentInfo, TodoItem } from './types.js';
-
-interface TodoInput {
-  todos?: Array<{
-    content?: string;
-    subject?: string;  // TaskCreate uses 'subject' instead of 'content'
-    status?: string;
-    activeForm?: string;
-  }>;
-  // TaskCreate single-item format
-  subject?: string;
-  description?: string;
-  status?: string;
-  activeForm?: string;
-}
+import { logError } from '../../lib/dist/logging.js';
+import type { AgentInfo } from './types.js';
 
 interface ContentItem {
   type?: string;
   id?: string;
   name?: string;
-  input?: { skill?: string; prompt?: string; subagent_type?: string } & TodoInput;
+  input?: { skill?: string; prompt?: string; subagent_type?: string };
   tool_use_id?: string;
   content?: string;
 }
@@ -41,14 +27,6 @@ interface TranscriptEntry {
     model?: string;
     content?: ContentItem[];
   };
-  // TaskCreate/TaskUpdate tool results include task info at entry level
-  toolUseResult?: {
-    task?: {
-      id?: string;
-      subject?: string;
-      status?: string;
-    };
-  };
 }
 
 export interface TranscriptResult {
@@ -56,7 +34,6 @@ export interface TranscriptResult {
   activeSkill: string | null;
   agents: AgentInfo[];
   sessionStartedAt: Date | null;
-  todos: TodoItem[];
 }
 
 // Parse model ID to tier abbreviation
@@ -72,7 +49,6 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
     activeSkill: null,
     agents: [],
     sessionStartedAt: null,
-    todos: [],
   };
 
   try {
@@ -84,12 +60,6 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
 
     // Track running agents by their toolUseId
     const runningAgents = new Map<string, AgentInfo>();
-    // Track todos - use Map to handle updates by content/subject
-    const todosMap = new Map<string, TodoItem>();
-    // Track pending TaskCreate calls: toolUseId -> subject
-    const pendingTaskCreates = new Map<string, string>();
-    // Map taskId -> subject for TaskUpdate lookups
-    const taskIdToSubject = new Map<string, string>();
     let earliestTimestamp: Date | null = null;
 
     for await (const line of rl) {
@@ -145,71 +115,12 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
                 });
               } else if (item.name === 'Skill' && item.input?.skill) {
                 result.activeSkill = item.input.skill;
-              } else if (item.name === 'TaskCreate' && item.input) {
-                // TaskCreate: add single todo
-                const input = item.input;
-                const content = input.subject || input.description || '';
-                if (content) {
-                  logDebug(`TaskCreate: subject="${content}"`);
-                  todosMap.set(content, {
-                    content,
-                    status: 'pending',
-                    activeForm: input.activeForm,
-                  });
-                  // Store toolUseId -> subject for later taskId mapping
-                  if (item.id) {
-                    pendingTaskCreates.set(item.id, content);
-                  }
-                }
-              } else if (item.name === 'TaskUpdate' && item.input) {
-                // TaskUpdate: update existing todo status
-                const input = item.input as { taskId?: string; status?: string };
-                if (input.taskId && input.status) {
-                  logDebug(`TaskUpdate: taskId="${input.taskId}", status="${input.status}"`);
-                  // Find todo by taskId using the taskIdToSubject mapping
-                  const subject = taskIdToSubject.get(input.taskId);
-                  if (subject && todosMap.has(subject)) {
-                    const todo = todosMap.get(subject)!;
-                    todosMap.set(subject, {
-                      ...todo,
-                      status: input.status as TodoItem['status'],
-                    });
-                  } else {
-                    // Fallback: try to find by content match (legacy behavior)
-                    for (const [key, todo] of todosMap.entries()) {
-                      if (key.includes(input.taskId) || input.taskId === key) {
-                        todosMap.set(key, {
-                          ...todo,
-                          status: input.status as TodoItem['status'],
-                        });
-                        break;
-                      }
-                    }
-                  }
-                }
               }
             }
 
             // Detect tool_result items (agent completes)
             if (item.type === 'tool_result' && item.tool_use_id) {
               runningAgents.delete(item.tool_use_id);
-
-              // Check if this is a TaskCreate result with taskId mapping
-              const taskResult = entry.toolUseResult?.task;
-              if (taskResult?.id && pendingTaskCreates.has(item.tool_use_id)) {
-                const subject = pendingTaskCreates.get(item.tool_use_id)!;
-                taskIdToSubject.set(taskResult.id, subject);
-                pendingTaskCreates.delete(item.tool_use_id);
-              } else if (typeof item.content === 'string' && pendingTaskCreates.has(item.tool_use_id)) {
-                // Parse task ID from content string like "Task #3 created successfully"
-                const match = item.content.match(/Task #(\d+)/i);
-                if (match) {
-                  const taskId = match[1];
-                  const subject = pendingTaskCreates.get(item.tool_use_id)!;
-                  taskIdToSubject.set(taskId, subject);
-                  pendingTaskCreates.delete(item.tool_use_id);
-                }
-              }
             }
           }
         }
@@ -226,7 +137,6 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
     result.runningAgents = runningAgents.size;
     result.agents = Array.from(runningAgents.values());
     result.sessionStartedAt = earliestTimestamp;
-    result.todos = Array.from(todosMap.values());
   } catch (error) {
     // File doesn't exist or can't be read - log error for debugging
     const errorMessage = error instanceof Error ? error.message : String(error);
