@@ -140,6 +140,104 @@ function cleanupAttemptFiles(stateDir, attemptId) {
   deleteFile(`${stateDir}/todo-count-${attemptId}`);
 }
 
+// ../lib/dist/logging.js
+import { mkdirSync as mkdirSync2, appendFileSync, existsSync as existsSync2 } from "fs";
+import { join, dirname as dirname2 } from "path";
+var LogLevel;
+(function(LogLevel2) {
+  LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
+  LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
+  LogLevel2[LogLevel2["WARN"] = 2] = "WARN";
+  LogLevel2[LogLevel2["ERROR"] = 3] = "ERROR";
+})(LogLevel || (LogLevel = {}));
+var initialized = false;
+var logFile = "";
+var componentName = "";
+function getLogLevel() {
+  const levelStr = process.env.OMT_LOG_LEVEL?.toUpperCase();
+  switch (levelStr) {
+    case "DEBUG":
+      return LogLevel.DEBUG;
+    case "INFO":
+      return LogLevel.INFO;
+    case "WARN":
+      return LogLevel.WARN;
+    case "ERROR":
+      return LogLevel.ERROR;
+    default:
+      return LogLevel.INFO;
+  }
+}
+function shouldLog(level) {
+  return level >= getLogLevel();
+}
+function levelName(level) {
+  switch (level) {
+    case LogLevel.DEBUG:
+      return "DEBUG";
+    case LogLevel.INFO:
+      return "INFO";
+    case LogLevel.WARN:
+      return "WARN";
+    case LogLevel.ERROR:
+      return "ERROR";
+    default:
+      return "UNKNOWN";
+  }
+}
+function timestamp() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+function sanitizeSessionId(sessionId) {
+  return sessionId.replace(/[^a-zA-Z0-9-]/g, "-");
+}
+function log(level, message) {
+  if (!initialized || !logFile) {
+    return;
+  }
+  if (!shouldLog(level)) {
+    return;
+  }
+  const logDir = dirname2(logFile);
+  try {
+    if (!existsSync2(logDir)) {
+      mkdirSync2(logDir, { recursive: true });
+    }
+    const ts = timestamp();
+    const lvl = levelName(level);
+    const entry = `[${ts}] [${lvl}] [${componentName}] ${message}
+`;
+    appendFileSync(logFile, entry, "utf-8");
+  } catch {
+  }
+}
+function initLogger(component, projectRoot, sessionId) {
+  if (!projectRoot) {
+    initialized = false;
+    return;
+  }
+  componentName = component;
+  const sanitizedSession = sanitizeSessionId(sessionId || "default");
+  const logDir = join(projectRoot, ".claude", "sisyphus", "logs");
+  logFile = join(logDir, `${component}-${sanitizedSession}.log`);
+  initialized = true;
+}
+function logDebug(message) {
+  log(LogLevel.DEBUG, message);
+}
+function logInfo(message) {
+  log(LogLevel.INFO, message);
+}
+function logError(message) {
+  log(LogLevel.ERROR, message);
+}
+function logStart() {
+  logInfo("========== START ==========");
+}
+function logEnd() {
+  logInfo("========== END ==========");
+}
+
 // src/transcript-detector.ts
 var PROMISE_PATTERN = /<promise>\s*DONE\s*<\/promise>/i;
 var ORACLE_APPROVED_PATTERN = /<oracle-approved>.*VERIFIED_COMPLETE.*<\/oracle-approved>/i;
@@ -154,13 +252,21 @@ function detectCompletionPromise(transcriptPath) {
   if (!transcriptPath) return false;
   const content = readFileOrNull(transcriptPath);
   if (!content) return false;
-  return PROMISE_PATTERN.test(content);
+  const detected = PROMISE_PATTERN.test(content);
+  if (detected) {
+    logDebug("detected completion promise <promise>DONE</promise>");
+  }
+  return detected;
 }
 function detectOracleApproval(transcriptPath) {
   if (!transcriptPath) return false;
   const content = readFileOrNull(transcriptPath);
   if (!content) return false;
-  return ORACLE_APPROVED_PATTERN.test(content);
+  const detected = ORACLE_APPROVED_PATTERN.test(content);
+  if (detected) {
+    logDebug("detected oracle approval <oracle-approved>VERIFIED_COMPLETE</oracle-approved>");
+  }
+  return detected;
 }
 function detectOracleRejection(transcriptPath) {
   if (!transcriptPath) return null;
@@ -168,11 +274,15 @@ function detectOracleRejection(transcriptPath) {
   if (!content) return null;
   const hasRejection = ORACLE_REJECTION_PATTERNS.some((pattern) => pattern.test(content));
   if (!hasRejection) return null;
+  logDebug("detected oracle rejection pattern");
   const feedbackMatches = [];
   let match;
   while ((match = FEEDBACK_PATTERN.exec(content)) !== null) {
     feedbackMatches.push(match[2].trim());
     if (feedbackMatches.length >= 5) break;
+  }
+  if (feedbackMatches.length > 0) {
+    logDebug(`extracted rejection feedback: ${feedbackMatches.join(", ")}`);
   }
   return feedbackMatches.length > 0 ? feedbackMatches.join(" ") : "";
 }
@@ -187,13 +297,21 @@ function countIncompleteTodos(transcriptPath) {
     const [, taskId] = createMatch;
     todos.set(taskId, "pending");
   }
+  if (todos.size > 0) {
+    logDebug(`detected ${todos.size} TaskCreate result(s)`);
+  }
   const updatePattern = /"name":\s*"TaskUpdate"[\s\S]*?"taskId":\s*"(\d+)"[\s\S]*?"status":\s*"([^"]+)"/g;
   let updateMatch;
+  let updateCount = 0;
   while ((updateMatch = updatePattern.exec(content)) !== null) {
     const [, taskId, status] = updateMatch;
     if (todos.has(taskId)) {
       todos.set(taskId, status);
+      updateCount++;
     }
+  }
+  if (updateCount > 0) {
+    logDebug(`detected ${updateCount} TaskUpdate(s) affecting tracked tasks`);
   }
   let incomplete = 0;
   for (const status of todos.values()) {
@@ -201,6 +319,7 @@ function countIncompleteTodos(transcriptPath) {
       incomplete++;
     }
   }
+  logDebug(`todo count: ${todos.size} total, ${incomplete} incomplete`);
   return incomplete;
 }
 function analyzeTranscript(transcriptPath) {
@@ -381,7 +500,11 @@ async function main() {
     const rawInput = await readStdin();
     const input = parseInput(rawInput);
     const projectRoot = getProjectRoot(input.directory);
+    initLogger("persistent-mode", projectRoot, input.sessionId);
+    logStart();
+    logInfo(`stop hook invoked, sessionId=${input.sessionId}`);
     const incompleteTodoCount = countIncompleteTodos(input.transcriptPath);
+    logDebug(`incompleteTodoCount=${incompleteTodoCount}`);
     const context = {
       projectRoot,
       sessionId: input.sessionId,
@@ -389,10 +512,19 @@ async function main() {
       incompleteTodoCount
     };
     const output = makeDecision(context);
+    if (output.decision) {
+      logInfo(`decision=${output.decision}`);
+    } else if (output.continue !== void 0) {
+      logInfo(`decision=continue`);
+    }
     console.log(JSON.stringify(output));
+    logEnd();
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError(`error: ${errorMessage}`);
     console.error("persistent-mode error:", error);
     console.log('{"continue": true}');
+    logEnd();
   }
 }
 main();

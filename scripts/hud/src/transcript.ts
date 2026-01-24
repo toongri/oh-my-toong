@@ -1,5 +1,6 @@
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
+import { logDebug, logError } from '../../lib/dist/logging.js';
 import type { AgentInfo, TodoItem } from './types.js';
 
 interface TodoInput {
@@ -144,24 +145,12 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
                 });
               } else if (item.name === 'Skill' && item.input?.skill) {
                 result.activeSkill = item.input.skill;
-              } else if (item.name === 'TodoWrite' && item.input?.todos) {
-                // TodoWrite: replace entire todos list
-                todosMap.clear();
-                for (const t of item.input.todos) {
-                  const content = t.content || t.subject || '';
-                  if (content) {
-                    todosMap.set(content, {
-                      content,
-                      status: (t.status as TodoItem['status']) || 'pending',
-                      activeForm: t.activeForm,
-                    });
-                  }
-                }
               } else if (item.name === 'TaskCreate' && item.input) {
                 // TaskCreate: add single todo
                 const input = item.input;
                 const content = input.subject || input.description || '';
                 if (content) {
+                  logDebug(`TaskCreate: subject="${content}"`);
                   todosMap.set(content, {
                     content,
                     status: 'pending',
@@ -176,6 +165,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
                 // TaskUpdate: update existing todo status
                 const input = item.input as { taskId?: string; status?: string };
                 if (input.taskId && input.status) {
+                  logDebug(`TaskUpdate: taskId="${input.taskId}", status="${input.status}"`);
                   // Find todo by taskId using the taskIdToSubject mapping
                   const subject = taskIdToSubject.get(input.taskId);
                   if (subject && todosMap.has(subject)) {
@@ -226,8 +216,10 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
 
         // Note: We no longer track assistant messages as agents.
         // Only subagents (Task tool) are shown in the HUD.
-      } catch {
-        // Skip malformed lines
+      } catch (error) {
+        // Skip malformed lines but log the error
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logError(`Failed to parse transcript line: ${errorMessage}`);
       }
     }
 
@@ -235,8 +227,10 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
     result.agents = Array.from(runningAgents.values());
     result.sessionStartedAt = earliestTimestamp;
     result.todos = Array.from(todosMap.values());
-  } catch {
-    // File doesn't exist or can't be read
+  } catch (error) {
+    // File doesn't exist or can't be read - log error for debugging
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError(`Failed to read transcript file: ${errorMessage}`);
   }
 
   return result;

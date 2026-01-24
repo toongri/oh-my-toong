@@ -4,6 +4,15 @@ import type { TranscriptResult } from './transcript.js';
 
 // Mock modules before imports
 const mockReadStdin = jest.fn<() => Promise<StdinInput | null>>();
+
+// Logging mocks
+const mockInitLogger = jest.fn<(component: string, projectRoot: string, sessionId?: string) => void>();
+const mockLogDebug = jest.fn<(message: string) => void>();
+const mockLogInfo = jest.fn<(message: string) => void>();
+const mockLogWarn = jest.fn<(message: string) => void>();
+const mockLogError = jest.fn<(message: string) => void>();
+const mockLogStart = jest.fn<() => void>();
+const mockLogEnd = jest.fn<() => void>();
 const mockReadRalphState = jest.fn<(cwd: string, sessionId?: string) => Promise<RalphState | null>>();
 const mockReadUltraworkState = jest.fn<(cwd: string) => Promise<UltraworkState | null>>();
 // readRalphVerification removed - oracle_feedback is now in RalphState
@@ -42,6 +51,16 @@ jest.unstable_mockModule('./usage-api.js', () => ({
 jest.unstable_mockModule('./formatter.js', () => ({
   formatStatusLineV2: mockFormatStatusLineV2,
   formatMinimalStatus: mockFormatMinimalStatus,
+}));
+
+jest.unstable_mockModule('../../lib/dist/logging.js', () => ({
+  initLogger: mockInitLogger,
+  logDebug: mockLogDebug,
+  logInfo: mockLogInfo,
+  logWarn: mockLogWarn,
+  logError: mockLogError,
+  logStart: mockLogStart,
+  logEnd: mockLogEnd,
 }));
 
 // Import main after mocks are set up
@@ -439,6 +458,144 @@ describe('main', () => {
       await main();
 
       expect(consoleLogSpy).toHaveBeenCalledWith('[OMT]\u00A0ready');
+    });
+  });
+
+  describe('logging', () => {
+    it('initializes logger with correct parameters when input is valid', async () => {
+      mockReadStdin.mockResolvedValue({
+        hook_event_name: 'Status',
+        session_id: 'test-session-123',
+        transcript_path: '/path/to/transcript.jsonl',
+        cwd: '/my/project',
+        context_window: {
+          used_percentage: 50,
+          total_input_tokens: 10000,
+          context_window_size: 200000,
+        },
+      });
+
+      await main();
+
+      expect(mockInitLogger).toHaveBeenCalledWith('hud', '/my/project', 'test-session-123');
+    });
+
+    it('uses default session ID when session_id is empty', async () => {
+      mockReadStdin.mockResolvedValue({
+        hook_event_name: 'Status',
+        session_id: '',
+        transcript_path: '/path/to/transcript.jsonl',
+        cwd: '/my/project',
+        context_window: {
+          used_percentage: 50,
+          total_input_tokens: 10000,
+          context_window_size: 200000,
+        },
+      });
+
+      await main();
+
+      expect(mockInitLogger).toHaveBeenCalledWith('hud', '/my/project', 'default');
+    });
+
+    it('calls logStart at entry point', async () => {
+      mockReadStdin.mockResolvedValue({
+        hook_event_name: 'Status',
+        session_id: 'test-session',
+        transcript_path: '/path/to/transcript.jsonl',
+        cwd: '/test/cwd',
+        context_window: {
+          used_percentage: 50,
+          total_input_tokens: 10000,
+          context_window_size: 200000,
+        },
+      });
+
+      await main();
+
+      expect(mockLogStart).toHaveBeenCalled();
+    });
+
+    it('logs input parameters after receiving stdin', async () => {
+      mockReadStdin.mockResolvedValue({
+        hook_event_name: 'Status',
+        session_id: 'test-session',
+        transcript_path: '/path/to/transcript.jsonl',
+        cwd: '/test/cwd',
+        context_window: {
+          used_percentage: 50,
+          total_input_tokens: 10000,
+          context_window_size: 200000,
+        },
+      });
+
+      await main();
+
+      expect(mockLogInfo).toHaveBeenCalledWith(expect.stringContaining('transcript_path'));
+      expect(mockLogInfo).toHaveBeenCalledWith(expect.stringContaining('/path/to/transcript.jsonl'));
+    });
+
+    it('logs todo counts after transcript parse', async () => {
+      mockReadStdin.mockResolvedValue({
+        hook_event_name: 'Status',
+        session_id: 'test-session',
+        transcript_path: '/path/to/transcript.jsonl',
+        cwd: '/test/cwd',
+        context_window: {
+          used_percentage: 50,
+          total_input_tokens: 10000,
+          context_window_size: 200000,
+        },
+      });
+      mockParseTranscript.mockResolvedValue({
+        runningAgents: 0,
+        activeSkill: null,
+        agents: [],
+        sessionStartedAt: null,
+        todos: [
+          { content: 'Task 1', status: 'completed' },
+          { content: 'Task 2', status: 'pending' },
+        ],
+      });
+
+      await main();
+
+      expect(mockLogInfo).toHaveBeenCalledWith(expect.stringContaining('todos'));
+    });
+
+    it('calls logEnd on successful completion', async () => {
+      mockReadStdin.mockResolvedValue({
+        hook_event_name: 'Status',
+        session_id: 'test-session',
+        transcript_path: '/path/to/transcript.jsonl',
+        cwd: '/test/cwd',
+        context_window: {
+          used_percentage: 50,
+          total_input_tokens: 10000,
+          context_window_size: 200000,
+        },
+      });
+
+      await main();
+
+      expect(mockLogEnd).toHaveBeenCalled();
+    });
+
+    it('logs error when an exception occurs', async () => {
+      mockReadStdin.mockRejectedValue(new Error('Test error message'));
+
+      await main();
+
+      expect(mockLogError).toHaveBeenCalledWith(expect.stringContaining('Test error message'));
+    });
+
+    it('does not initialize logger when no input is received', async () => {
+      mockReadStdin.mockResolvedValue(null);
+
+      await main();
+
+      // Logger should not be initialized when there's no input
+      expect(mockInitLogger).not.toHaveBeenCalled();
     });
   });
 });

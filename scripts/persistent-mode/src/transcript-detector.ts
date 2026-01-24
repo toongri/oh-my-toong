@@ -1,5 +1,6 @@
 import { TranscriptDetection } from './types.js';
 import { readFileOrNull } from './utils.js';
+import { logDebug } from '../../lib/dist/logging.js';
 
 // Pattern matchers
 const PROMISE_PATTERN = /<promise>\s*DONE\s*<\/promise>/i;
@@ -20,14 +21,22 @@ export function detectCompletionPromise(transcriptPath: string | null): boolean 
   if (!transcriptPath) return false;
   const content = readFileOrNull(transcriptPath);
   if (!content) return false;
-  return PROMISE_PATTERN.test(content);
+  const detected = PROMISE_PATTERN.test(content);
+  if (detected) {
+    logDebug('detected completion promise <promise>DONE</promise>');
+  }
+  return detected;
 }
 
 export function detectOracleApproval(transcriptPath: string | null): boolean {
   if (!transcriptPath) return false;
   const content = readFileOrNull(transcriptPath);
   if (!content) return false;
-  return ORACLE_APPROVED_PATTERN.test(content);
+  const detected = ORACLE_APPROVED_PATTERN.test(content);
+  if (detected) {
+    logDebug('detected oracle approval <oracle-approved>VERIFIED_COMPLETE</oracle-approved>');
+  }
+  return detected;
 }
 
 export function detectOracleRejection(transcriptPath: string | null): string | null {
@@ -39,12 +48,18 @@ export function detectOracleRejection(transcriptPath: string | null): string | n
   const hasRejection = ORACLE_REJECTION_PATTERNS.some(pattern => pattern.test(content));
   if (!hasRejection) return null;
 
+  logDebug('detected oracle rejection pattern');
+
   // Extract feedback
   const feedbackMatches: string[] = [];
   let match;
   while ((match = FEEDBACK_PATTERN.exec(content)) !== null) {
     feedbackMatches.push(match[2].trim());
     if (feedbackMatches.length >= 5) break;
+  }
+
+  if (feedbackMatches.length > 0) {
+    logDebug(`extracted rejection feedback: ${feedbackMatches.join(', ')}`);
   }
 
   return feedbackMatches.length > 0 ? feedbackMatches.join(' ') : '';
@@ -68,16 +83,26 @@ export function countIncompleteTodos(transcriptPath: string | null): number {
     todos.set(taskId, 'pending');
   }
 
+  if (todos.size > 0) {
+    logDebug(`detected ${todos.size} TaskCreate result(s)`);
+  }
+
   // Parse TaskUpdate calls to update status
   // Look for patterns like: TaskUpdate with taskId and status
   const updatePattern = /"name":\s*"TaskUpdate"[\s\S]*?"taskId":\s*"(\d+)"[\s\S]*?"status":\s*"([^"]+)"/g;
   let updateMatch;
+  let updateCount = 0;
   while ((updateMatch = updatePattern.exec(content)) !== null) {
     const [, taskId, status] = updateMatch;
     // Update task status if we know about this task
     if (todos.has(taskId)) {
       todos.set(taskId, status);
+      updateCount++;
     }
+  }
+
+  if (updateCount > 0) {
+    logDebug(`detected ${updateCount} TaskUpdate(s) affecting tracked tasks`);
   }
 
   // Count incomplete (pending or in_progress)
@@ -87,6 +112,8 @@ export function countIncompleteTodos(transcriptPath: string | null): number {
       incomplete++;
     }
   }
+
+  logDebug(`todo count: ${todos.size} total, ${incomplete} incomplete`);
 
   return incomplete;
 }

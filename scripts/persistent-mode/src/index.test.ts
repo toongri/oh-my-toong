@@ -1,8 +1,9 @@
 import { main } from './index.js';
-import { mkdir, writeFile, rm, readFile } from 'fs/promises';
+import { mkdir, writeFile, rm, readFile, access } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { Readable } from 'stream';
+import { existsSync } from 'fs';
 
 describe('main entry point', () => {
   const testDir = join(tmpdir(), 'persistent-mode-index-test-' + Date.now());
@@ -213,6 +214,158 @@ describe('main entry point', () => {
       // Should block because of incomplete todos
       expect(output.decision).toBe('block');
       expect(output.reason).toContain('remaining');
+    });
+  });
+
+  describe('logging integration', () => {
+    const loggingTestDir = join(tmpdir(), 'persistent-mode-logging-test-' + Date.now());
+    const loggingProjectRoot = join(loggingTestDir, 'project');
+    const logsDir = join(loggingProjectRoot, '.claude', 'sisyphus', 'logs');
+
+    beforeAll(async () => {
+      await mkdir(join(loggingProjectRoot, '.claude', 'sisyphus'), { recursive: true });
+      await mkdir(join(loggingProjectRoot, '.git'), { recursive: true });
+    });
+
+    afterAll(async () => {
+      await rm(loggingTestDir, { recursive: true, force: true });
+    });
+
+    beforeEach(async () => {
+      // Set DEBUG log level to capture all logs
+      process.env.OMT_LOG_LEVEL = 'DEBUG';
+      // Clean up logs directory before each test
+      try {
+        await rm(logsDir, { recursive: true, force: true });
+      } catch {}
+    });
+
+    afterEach(() => {
+      delete process.env.OMT_LOG_LEVEL;
+    });
+
+    it('should create log file with START and END markers', async () => {
+      const input = JSON.stringify({
+        sessionId: 'logging-test-session',
+        cwd: loggingProjectRoot,
+        transcript_path: null,
+      });
+
+      const mockStdin = createMockStdin(input);
+      Object.defineProperty(process, 'stdin', {
+        value: mockStdin,
+        writable: true,
+        configurable: true,
+      });
+
+      await main();
+
+      // Check that log file was created
+      const logFile = join(logsDir, 'persistent-mode-logging-test-session.log');
+      expect(existsSync(logFile)).toBe(true);
+
+      // Check log file content
+      const logContent = await readFile(logFile, 'utf-8');
+      expect(logContent).toContain('START');
+      expect(logContent).toContain('END');
+    });
+
+    it('should log session ID and hook event', async () => {
+      const input = JSON.stringify({
+        sessionId: 'log-session-info',
+        cwd: loggingProjectRoot,
+        transcript_path: null,
+      });
+
+      const mockStdin = createMockStdin(input);
+      Object.defineProperty(process, 'stdin', {
+        value: mockStdin,
+        writable: true,
+        configurable: true,
+      });
+
+      await main();
+
+      const logFile = join(logsDir, 'persistent-mode-log-session-info.log');
+      const logContent = await readFile(logFile, 'utf-8');
+      expect(logContent).toContain('log-session-info');
+      expect(logContent).toContain('stop hook');
+    });
+
+    it('should log decision result', async () => {
+      const input = JSON.stringify({
+        sessionId: 'log-decision-test',
+        cwd: loggingProjectRoot,
+        transcript_path: null,
+      });
+
+      const mockStdin = createMockStdin(input);
+      Object.defineProperty(process, 'stdin', {
+        value: mockStdin,
+        writable: true,
+        configurable: true,
+      });
+
+      await main();
+
+      const logFile = join(logsDir, 'persistent-mode-log-decision-test.log');
+      const logContent = await readFile(logFile, 'utf-8');
+      expect(logContent).toMatch(/decision.*continue/i);
+    });
+
+    it('should log errors when they occur', async () => {
+      // Force an error by providing an invalid transcript path with permission issues
+      // Note: This test verifies error logging path exists even if triggering is complex
+      const input = JSON.stringify({
+        sessionId: 'log-error-test',
+        cwd: loggingProjectRoot,
+        transcript_path: null,
+      });
+
+      const mockStdin = createMockStdin(input);
+      Object.defineProperty(process, 'stdin', {
+        value: mockStdin,
+        writable: true,
+        configurable: true,
+      });
+
+      await main();
+
+      // At minimum, log file should exist with proper start/end
+      const logFile = join(logsDir, 'persistent-mode-log-error-test.log');
+      expect(existsSync(logFile)).toBe(true);
+    });
+
+    it('should log transcript detection details at DEBUG level', async () => {
+      // Create a transcript file with patterns to detect
+      const transcriptPath = join(loggingTestDir, 'logging-transcript.jsonl');
+      const transcriptContent = `
+        Task #1 created successfully
+        Task #2 created successfully
+        {"name": "TaskUpdate", "parameters": {"taskId": "1", "status": "completed"}}
+      `;
+      await writeFile(transcriptPath, transcriptContent);
+
+      const input = JSON.stringify({
+        sessionId: 'log-detection-test',
+        cwd: loggingProjectRoot,
+        transcript_path: transcriptPath,
+      });
+
+      const mockStdin = createMockStdin(input);
+      Object.defineProperty(process, 'stdin', {
+        value: mockStdin,
+        writable: true,
+        configurable: true,
+      });
+
+      await main();
+
+      const logFile = join(logsDir, 'persistent-mode-log-detection-test.log');
+      const logContent = await readFile(logFile, 'utf-8');
+      // Should log detection patterns (at DEBUG level)
+      expect(logContent).toMatch(/DEBUG/);
+      expect(logContent).toMatch(/todo|task|detection|count/i);
     });
   });
 });

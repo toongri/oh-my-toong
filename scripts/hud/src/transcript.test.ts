@@ -853,6 +853,108 @@ describe('parseTranscript', () => {
       expect(taskTwo?.status).toBe('in_progress');
     });
   });
+
+  describe('TodoWrite removal', () => {
+    it('should NOT process TodoWrite tool calls for todo tracking', async () => {
+      const transcriptPath = join(testDir, 'todowrite-ignored.jsonl');
+      const lines = [
+        // TodoWrite should be ignored
+        JSON.stringify({
+          type: 'assistant',
+          timestamp: '2024-01-15T10:00:00.000Z',
+          message: {
+            model: 'claude-opus-4-20250514',
+            content: [
+              {
+                type: 'tool_use',
+                id: 'toolu_todowrite',
+                name: 'TodoWrite',
+                input: {
+                  todos: [
+                    { content: 'Old todo from TodoWrite', status: 'pending' },
+                    { content: 'Another old todo', status: 'in_progress' },
+                  ],
+                },
+              },
+            ],
+          },
+        }),
+      ];
+      await writeFile(transcriptPath, lines.join('\n'));
+
+      const result = await parseTranscript(transcriptPath);
+
+      // TodoWrite should be completely ignored - no todos should be tracked from it
+      expect(result.todos).toHaveLength(0);
+    });
+
+    it('should only track todos from TaskCreate, not TodoWrite', async () => {
+      const transcriptPath = join(testDir, 'todowrite-vs-taskcreate.jsonl');
+      const lines = [
+        // TodoWrite should be ignored
+        JSON.stringify({
+          type: 'assistant',
+          timestamp: '2024-01-15T10:00:00.000Z',
+          message: {
+            model: 'claude-opus-4-20250514',
+            content: [
+              {
+                type: 'tool_use',
+                id: 'toolu_todowrite',
+                name: 'TodoWrite',
+                input: {
+                  todos: [
+                    { content: 'Ignored todo', status: 'pending' },
+                  ],
+                },
+              },
+            ],
+          },
+        }),
+        // TaskCreate should work
+        JSON.stringify({
+          type: 'assistant',
+          timestamp: '2024-01-15T10:00:01.000Z',
+          message: {
+            model: 'claude-opus-4-20250514',
+            content: [
+              {
+                type: 'tool_use',
+                id: 'toolu_taskcreate',
+                name: 'TaskCreate',
+                input: {
+                  subject: 'Real task from TaskCreate',
+                  activeForm: 'Working on real task',
+                },
+              },
+            ],
+          },
+        }),
+        // TaskCreate result
+        JSON.stringify({
+          type: 'user',
+          timestamp: '2024-01-15T10:00:02.000Z',
+          message: {
+            content: [
+              {
+                tool_use_id: 'toolu_taskcreate',
+                type: 'tool_result',
+                content: 'Task #1 created',
+              },
+            ],
+          },
+          toolUseResult: { task: { id: '1', subject: 'Real task from TaskCreate' } },
+        }),
+      ];
+      await writeFile(transcriptPath, lines.join('\n'));
+
+      const result = await parseTranscript(transcriptPath);
+
+      // Only TaskCreate todo should be tracked, not TodoWrite
+      expect(result.todos).toHaveLength(1);
+      expect(result.todos[0].content).toBe('Real task from TaskCreate');
+    });
+  });
 });
 
 describe('modelToTier', () => {

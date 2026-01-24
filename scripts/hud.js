@@ -85,6 +85,106 @@ async function isThinkingEnabled() {
 // src/transcript.ts
 import { createReadStream } from "fs";
 import { createInterface } from "readline";
+
+// ../lib/dist/logging.js
+import { mkdirSync, appendFileSync, existsSync } from "fs";
+import { join as join2, dirname } from "path";
+var LogLevel;
+(function(LogLevel2) {
+  LogLevel2[LogLevel2["DEBUG"] = 0] = "DEBUG";
+  LogLevel2[LogLevel2["INFO"] = 1] = "INFO";
+  LogLevel2[LogLevel2["WARN"] = 2] = "WARN";
+  LogLevel2[LogLevel2["ERROR"] = 3] = "ERROR";
+})(LogLevel || (LogLevel = {}));
+var initialized = false;
+var logFile = "";
+var componentName = "";
+function getLogLevel() {
+  const levelStr = process.env.OMT_LOG_LEVEL?.toUpperCase();
+  switch (levelStr) {
+    case "DEBUG":
+      return LogLevel.DEBUG;
+    case "INFO":
+      return LogLevel.INFO;
+    case "WARN":
+      return LogLevel.WARN;
+    case "ERROR":
+      return LogLevel.ERROR;
+    default:
+      return LogLevel.INFO;
+  }
+}
+function shouldLog(level) {
+  return level >= getLogLevel();
+}
+function levelName(level) {
+  switch (level) {
+    case LogLevel.DEBUG:
+      return "DEBUG";
+    case LogLevel.INFO:
+      return "INFO";
+    case LogLevel.WARN:
+      return "WARN";
+    case LogLevel.ERROR:
+      return "ERROR";
+    default:
+      return "UNKNOWN";
+  }
+}
+function timestamp() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+function sanitizeSessionId(sessionId) {
+  return sessionId.replace(/[^a-zA-Z0-9-]/g, "-");
+}
+function log(level, message) {
+  if (!initialized || !logFile) {
+    return;
+  }
+  if (!shouldLog(level)) {
+    return;
+  }
+  const logDir = dirname(logFile);
+  try {
+    if (!existsSync(logDir)) {
+      mkdirSync(logDir, { recursive: true });
+    }
+    const ts = timestamp();
+    const lvl = levelName(level);
+    const entry = `[${ts}] [${lvl}] [${componentName}] ${message}
+`;
+    appendFileSync(logFile, entry, "utf-8");
+  } catch {
+  }
+}
+function initLogger(component, projectRoot, sessionId) {
+  if (!projectRoot) {
+    initialized = false;
+    return;
+  }
+  componentName = component;
+  const sanitizedSession = sanitizeSessionId(sessionId || "default");
+  const logDir = join2(projectRoot, ".claude", "sisyphus", "logs");
+  logFile = join2(logDir, `${component}-${sanitizedSession}.log`);
+  initialized = true;
+}
+function logDebug(message) {
+  log(LogLevel.DEBUG, message);
+}
+function logInfo(message) {
+  log(LogLevel.INFO, message);
+}
+function logError(message) {
+  log(LogLevel.ERROR, message);
+}
+function logStart() {
+  logInfo("========== START ==========");
+}
+function logEnd() {
+  logInfo("========== END ==========");
+}
+
+// src/transcript.ts
 function modelToTier(modelId) {
   if (modelId.includes("opus")) return "o";
   if (modelId.includes("haiku")) return "h";
@@ -151,22 +251,11 @@ async function parseTranscript(transcriptPath) {
                 });
               } else if (item.name === "Skill" && item.input?.skill) {
                 result.activeSkill = item.input.skill;
-              } else if (item.name === "TodoWrite" && item.input?.todos) {
-                todosMap.clear();
-                for (const t of item.input.todos) {
-                  const content = t.content || t.subject || "";
-                  if (content) {
-                    todosMap.set(content, {
-                      content,
-                      status: t.status || "pending",
-                      activeForm: t.activeForm
-                    });
-                  }
-                }
               } else if (item.name === "TaskCreate" && item.input) {
                 const input = item.input;
                 const content = input.subject || input.description || "";
                 if (content) {
+                  logDebug(`TaskCreate: subject="${content}"`);
                   todosMap.set(content, {
                     content,
                     status: "pending",
@@ -179,6 +268,7 @@ async function parseTranscript(transcriptPath) {
               } else if (item.name === "TaskUpdate" && item.input) {
                 const input = item.input;
                 if (input.taskId && input.status) {
+                  logDebug(`TaskUpdate: taskId="${input.taskId}", status="${input.status}"`);
                   const subject = taskIdToSubject.get(input.taskId);
                   if (subject && todosMap.has(subject)) {
                     const todo = todosMap.get(subject);
@@ -219,14 +309,18 @@ async function parseTranscript(transcriptPath) {
             }
           }
         }
-      } catch {
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logError(`Failed to parse transcript line: ${errorMessage}`);
       }
     }
     result.runningAgents = runningAgents.size;
     result.agents = Array.from(runningAgents.values());
     result.sessionStartedAt = earliestTimestamp;
     result.todos = Array.from(todosMap.values());
-  } catch {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError(`Failed to read transcript file: ${errorMessage}`);
   }
   return result;
 }
@@ -235,7 +329,7 @@ async function parseTranscript(transcriptPath) {
 import { exec } from "child_process";
 import { promisify } from "util";
 import { readFile as readFile2 } from "fs/promises";
-import { join as join2 } from "path";
+import { join as join3 } from "path";
 import { homedir as homedir2 } from "os";
 var execAsync = promisify(exec);
 async function getOAuthToken() {
@@ -251,7 +345,7 @@ async function getOAuthToken() {
   } catch {
   }
   try {
-    const credPath = join2(homedir2(), ".claude", ".credentials.json");
+    const credPath = join3(homedir2(), ".claude", ".credentials.json");
     const content = await readFile2(credPath, "utf8");
     const creds = JSON.parse(content);
     if (creds.claudeAiOauth?.accessToken) {
@@ -458,6 +552,9 @@ async function main() {
     }
     const cwd = input.cwd || process.cwd();
     const sessionId = input.session_id || "default";
+    initLogger("hud", cwd, sessionId);
+    logStart();
+    logInfo(`Input: transcript_path=${input.transcript_path}, cwd=${cwd}`);
     const [
       ralph,
       ultrawork,
@@ -480,6 +577,7 @@ async function main() {
       const completed = transcriptTodos.filter((t) => t.status === "completed").length;
       todos = { completed, total: transcriptTodos.length };
     }
+    logInfo(`Transcript parsed: todos=${transcriptTodos.length}, runningAgents=${transcriptData.runningAgents}`);
     const hudData = {
       contextPercent: input.context_window?.used_percentage ?? null,
       ralph,
@@ -495,7 +593,10 @@ async function main() {
       inProgressTodo
     };
     console.log(toNonBreakingSpaces(formatStatusLineV2(hudData)));
+    logEnd();
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError(`HUD error: ${errorMessage}`);
     console.log(toNonBreakingSpaces(formatMinimalStatus(null)));
   }
 }

@@ -3,6 +3,7 @@ import { readRalphState, readUltraworkState, readBackgroundTasks, calculateSessi
 import { parseTranscript } from './transcript.js';
 import { fetchRateLimits } from './usage-api.js';
 import { formatStatusLineV2, formatMinimalStatus } from './formatter.js';
+import { initLogger, logInfo, logError, logStart, logEnd } from '../../lib/dist/logging.js';
 import type { HudDataV2 } from './types.js';
 
 /**
@@ -27,6 +28,11 @@ export async function main(): Promise<void> {
 
     const cwd = input.cwd || process.cwd();
     const sessionId = input.session_id || 'default';
+
+    // Initialize logging
+    initLogger('hud', cwd, sessionId);
+    logStart();
+    logInfo(`Input: transcript_path=${input.transcript_path}, cwd=${cwd}`);
 
     // Gather data from all sources in parallel
     const [
@@ -60,6 +66,9 @@ export async function main(): Promise<void> {
       todos = { completed, total: transcriptTodos.length };
     }
 
+    // Log transcript parsing results
+    logInfo(`Transcript parsed: todos=${transcriptTodos.length}, runningAgents=${transcriptData.runningAgents}`);
+
     const hudData: HudDataV2 = {
       contextPercent: input.context_window?.used_percentage ?? null,
       ralph,
@@ -77,8 +86,11 @@ export async function main(): Promise<void> {
 
     // Format and output with non-breaking spaces for terminal alignment
     console.log(toNonBreakingSpaces(formatStatusLineV2(hudData)));
+    logEnd();
   } catch (error) {
-    // Graceful fallback on any error
+    // Log error and graceful fallback
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError(`HUD error: ${errorMessage}`);
     console.log(toNonBreakingSpaces(formatMinimalStatus(null)));
   }
 }
