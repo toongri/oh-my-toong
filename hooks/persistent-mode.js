@@ -69,7 +69,6 @@ function generateAttemptId(sessionId, directory) {
 }
 
 // src/state.ts
-import { homedir } from "os";
 var MAX_TODO_CONTINUATION_ATTEMPTS = 5;
 function readRalphState(projectRoot, sessionId) {
   const path = `${projectRoot}/.claude/sisyphus/ralph-state-${sessionId}.json`;
@@ -88,32 +87,6 @@ function updateRalphState(projectRoot, sessionId, state) {
 }
 function cleanupRalphState(projectRoot, sessionId) {
   deleteFile(`${projectRoot}/.claude/sisyphus/ralph-state-${sessionId}.json`);
-}
-function readUltraworkState(projectRoot, sessionId) {
-  const paths = [
-    `${projectRoot}/.claude/sisyphus/ultrawork-state-${sessionId}.json`,
-    `${homedir()}/.claude/ultrawork-state-${sessionId}.json`
-  ];
-  for (const path of paths) {
-    const content = readFileOrNull(path);
-    if (content) {
-      try {
-        const state = JSON.parse(content);
-        return state.active ? state : null;
-      } catch {
-        continue;
-      }
-    }
-  }
-  return null;
-}
-function updateUltraworkState(projectRoot, sessionId, state) {
-  const path = `${projectRoot}/.claude/sisyphus/ultrawork-state-${sessionId}.json`;
-  writeFileSafe(path, JSON.stringify(state, null, 2));
-}
-function cleanupUltraworkState(projectRoot, sessionId) {
-  deleteFile(`${projectRoot}/.claude/sisyphus/ultrawork-state-${sessionId}.json`);
-  deleteFile(`${homedir()}/.claude/ultrawork-state-${sessionId}.json`);
 }
 function getAttemptCount(stateDir, attemptId) {
   const content = readFileOrNull(`${stateDir}/todo-attempts-${attemptId}`);
@@ -335,29 +308,6 @@ Original task: ${prompt}
 ---
 `;
 }
-function buildUltraworkContinuationMessage(reinforcementCount, incompleteCount, originalPrompt) {
-  return `<ultrawork-persistence>
-
-[ULTRAWORK MODE STILL ACTIVE - Reinforcement #${reinforcementCount}]
-
-Your ultrawork session is NOT complete. ${incompleteCount} incomplete todos remain.
-
-REMEMBER THE ULTRAWORK RULES:
-- **PARALLEL**: Fire independent calls simultaneously - NEVER wait sequentially
-- **BACKGROUND FIRST**: Use Task(run_in_background=true) for exploration (10+ concurrent)
-- **TODO**: Track EVERY step. Mark complete IMMEDIATELY after each
-- **VERIFY**: Check ALL requirements met before done
-- **NO Premature Stopping**: ALL TODOs must be complete
-
-Continue working on the next pending task. DO NOT STOP until all tasks are marked complete.
-
-Original task: ${originalPrompt}
-
-</ultrawork-persistence>
-
----
-`;
-}
 function buildTodoContinuationMessage(incompleteCount) {
   return `<todo-continuation>
 
@@ -393,13 +343,11 @@ function makeDecision(context) {
   if (ralphState && ralphState.active) {
     if (transcript.hasOracleApproval) {
       cleanupRalphState(projectRoot, sessionId);
-      cleanupUltraworkState(projectRoot, sessionId);
       cleanupAttemptFiles(stateDir, attemptId);
       return formatContinueOutput();
     }
     if (ralphState.iteration >= ralphState.max_iterations) {
       cleanupRalphState(projectRoot, sessionId);
-      cleanupUltraworkState(projectRoot, sessionId);
       cleanupAttemptFiles(stateDir, attemptId);
       return formatContinueOutput();
     }
@@ -422,34 +370,6 @@ function makeDecision(context) {
       oracleFeedback
     );
     return formatBlockOutput(message);
-  }
-  const ultraworkState = readUltraworkState(projectRoot, sessionId);
-  if (ultraworkState && ultraworkState.active && incompleteTodoCount > 0) {
-    const attempts = getAttemptCount(stateDir, attemptId);
-    if (attempts >= MAX_TODO_CONTINUATION_ATTEMPTS) {
-      cleanupAttemptFiles(stateDir, attemptId);
-      cleanupUltraworkState(projectRoot, sessionId);
-      return formatContinueOutput();
-    }
-    incrementAttempts(stateDir, attemptId);
-    const newCount = (ultraworkState.reinforcement_count || 0) + 1;
-    const updatedState = {
-      ...ultraworkState,
-      reinforcement_count: newCount,
-      last_checked_at: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    updateUltraworkState(projectRoot, sessionId, updatedState);
-    const message = buildUltraworkContinuationMessage(
-      newCount,
-      incompleteTodoCount,
-      ultraworkState.original_prompt || ""
-    );
-    return formatBlockOutput(message);
-  }
-  if (ultraworkState && ultraworkState.active && incompleteTodoCount === 0) {
-    cleanupUltraworkState(projectRoot, sessionId);
-    cleanupAttemptFiles(stateDir, attemptId);
-    return formatContinueOutput();
   }
   if (incompleteTodoCount > 0) {
     const attempts = getAttemptCount(stateDir, attemptId);

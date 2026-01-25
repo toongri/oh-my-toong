@@ -1,6 +1,5 @@
-import { RalphState, UltraworkState } from './types.js';
+import { RalphState } from './types.js';
 import { readFileOrNull, writeFileSafe, deleteFile, ensureDir } from './utils.js';
-import { homedir } from 'os';
 
 const MAX_TODO_CONTINUATION_ATTEMPTS = 5;
 
@@ -24,37 +23,6 @@ export function updateRalphState(projectRoot: string, sessionId: string, state: 
 
 export function cleanupRalphState(projectRoot: string, sessionId: string): void {
   deleteFile(`${projectRoot}/.claude/sisyphus/ralph-state-${sessionId}.json`);
-}
-
-export function readUltraworkState(projectRoot: string, sessionId: string): UltraworkState | null {
-  // Check project location first, then home
-  const paths = [
-    `${projectRoot}/.claude/sisyphus/ultrawork-state-${sessionId}.json`,
-    `${homedir()}/.claude/ultrawork-state-${sessionId}.json`
-  ];
-
-  for (const path of paths) {
-    const content = readFileOrNull(path);
-    if (content) {
-      try {
-        const state = JSON.parse(content) as UltraworkState;
-        return state.active ? state : null;
-      } catch {
-        continue;
-      }
-    }
-  }
-  return null;
-}
-
-export function updateUltraworkState(projectRoot: string, sessionId: string, state: UltraworkState): void {
-  const path = `${projectRoot}/.claude/sisyphus/ultrawork-state-${sessionId}.json`;
-  writeFileSafe(path, JSON.stringify(state, null, 2));
-}
-
-export function cleanupUltraworkState(projectRoot: string, sessionId: string): void {
-  deleteFile(`${projectRoot}/.claude/sisyphus/ultrawork-state-${sessionId}.json`);
-  deleteFile(`${homedir()}/.claude/ultrawork-state-${sessionId}.json`);
 }
 
 // Attempt counting for stuck agent escape hatch

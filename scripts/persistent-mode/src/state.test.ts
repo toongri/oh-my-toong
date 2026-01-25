@@ -2,9 +2,6 @@ import {
   readRalphState,
   updateRalphState,
   cleanupRalphState,
-  readUltraworkState,
-  updateUltraworkState,
-  cleanupUltraworkState,
   getAttemptCount,
   incrementAttempts,
   resetAttempts,
@@ -13,7 +10,7 @@ import {
   cleanupAttemptFiles,
   MAX_TODO_CONTINUATION_ATTEMPTS,
 } from './state.js';
-import type { RalphState, UltraworkState } from './types.js';
+import type { RalphState } from './types.js';
 import { mkdir, rm, writeFile, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
@@ -148,116 +145,6 @@ describe('Ralph state management', () => {
 
     it('should not throw when file does not exist', () => {
       expect(() => cleanupRalphState(projectRoot, 'nonexistent')).not.toThrow();
-    });
-  });
-});
-
-describe('Ultrawork state management', () => {
-  const testDir = join(tmpdir(), 'state-test-ultrawork-' + Date.now());
-  const projectRoot = join(testDir, 'project');
-  const sisyphusDir = join(projectRoot, '.claude', 'sisyphus');
-  const sessionId = 'ultra-session';
-
-  beforeAll(async () => {
-    await mkdir(sisyphusDir, { recursive: true });
-  });
-
-  afterAll(async () => {
-    await rm(testDir, { recursive: true, force: true });
-  });
-
-  beforeEach(async () => {
-    // Clean up state files before each test
-    const stateFile = join(sisyphusDir, `ultrawork-state-${sessionId}.json`);
-    try { await rm(stateFile, { force: true }); } catch {}
-  });
-
-  describe('readUltraworkState', () => {
-    it('should return null when state file does not exist', () => {
-      const result = readUltraworkState(projectRoot, 'nonexistent');
-
-      expect(result).toBeNull();
-    });
-
-    it('should read active ultrawork state from project location', async () => {
-      const state: UltraworkState = {
-        active: true,
-        reinforcement_count: 3,
-        original_prompt: 'Original task',
-      };
-      await writeFile(
-        join(sisyphusDir, `ultrawork-state-${sessionId}.json`),
-        JSON.stringify(state)
-      );
-
-      const result = readUltraworkState(projectRoot, sessionId);
-
-      expect(result).not.toBeNull();
-      expect(result?.active).toBe(true);
-      expect(result?.reinforcement_count).toBe(3);
-    });
-
-    it('should return null when state is inactive', async () => {
-      const state: UltraworkState = {
-        active: false,
-        reinforcement_count: 5,
-        original_prompt: 'Completed',
-      };
-      await writeFile(
-        join(sisyphusDir, `ultrawork-state-${sessionId}.json`),
-        JSON.stringify(state)
-      );
-
-      const result = readUltraworkState(projectRoot, sessionId);
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null for invalid JSON', async () => {
-      await writeFile(
-        join(sisyphusDir, `ultrawork-state-${sessionId}.json`),
-        'not json'
-      );
-
-      const result = readUltraworkState(projectRoot, sessionId);
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('updateUltraworkState', () => {
-    it('should write state to session-specific file', async () => {
-      const state: UltraworkState = {
-        active: true,
-        reinforcement_count: 5,
-        original_prompt: 'Updated prompt',
-        last_checked_at: '2024-01-22T10:00:00Z',
-      };
-
-      updateUltraworkState(projectRoot, sessionId, state);
-
-      const content = await readFile(
-        join(sisyphusDir, `ultrawork-state-${sessionId}.json`),
-        'utf8'
-      );
-      const parsed = JSON.parse(content);
-      expect(parsed.reinforcement_count).toBe(5);
-      expect(parsed.last_checked_at).toBe('2024-01-22T10:00:00Z');
-    });
-  });
-
-  describe('cleanupUltraworkState', () => {
-    it('should delete session-specific state files', async () => {
-      const stateFile = join(sisyphusDir, `ultrawork-state-${sessionId}.json`);
-      await writeFile(stateFile, '{}');
-
-      cleanupUltraworkState(projectRoot, sessionId);
-
-      expect(existsSync(stateFile)).toBe(false);
-    });
-
-    it('should not throw when files do not exist', () => {
-      expect(() => cleanupUltraworkState(projectRoot, 'nonexistent')).not.toThrow();
     });
   });
 });

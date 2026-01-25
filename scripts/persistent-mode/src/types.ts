@@ -23,14 +23,6 @@ export interface RalphState {
   oracle_feedback?: string[];
 }
 
-// Ultrawork state file structure
-export interface UltraworkState {
-  active: boolean;
-  reinforcement_count: number;
-  original_prompt: string;
-  last_checked_at?: string;
-}
-
 // Hook output format
 export interface HookOutput {
   decision?: 'block' | 'continue';

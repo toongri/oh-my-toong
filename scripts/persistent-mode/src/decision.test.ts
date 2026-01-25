@@ -107,7 +107,7 @@ describe('makeDecision', () => {
       expect(result).toEqual({ continue: true });
     });
 
-    it('should cleanup ralph and ultrawork state when max iterations reached', async () => {
+    it('should cleanup ralph state when max iterations reached', async () => {
       const ralphState = {
         active: true,
         iteration: 10,
@@ -115,13 +115,7 @@ describe('makeDecision', () => {
         completion_promise: 'DONE',
         prompt: 'Test task',
       };
-      const ultraworkState = {
-        active: true,
-        reinforcement_count: 5,
-        original_prompt: 'Test ultrawork',
-      };
       await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
-      await writeFile(join(sisyphusDir, 'ultrawork-state-test-session.json'), JSON.stringify(ultraworkState));
 
       const context = createContext();
 
@@ -129,7 +123,6 @@ describe('makeDecision', () => {
 
       const { existsSync } = await import('fs');
       expect(existsSync(join(sisyphusDir, 'ralph-state-test-session.json'))).toBe(false);
-      expect(existsSync(join(sisyphusDir, 'ultrawork-state-test-session.json'))).toBe(false);
     });
 
     it('should allow stop when oracle approval is detected in transcript', async () => {
@@ -153,7 +146,7 @@ describe('makeDecision', () => {
       expect(result).toEqual({ continue: true });
     });
 
-    it('should cleanup states when oracle approval detected', async () => {
+    it('should cleanup ralph state when oracle approval detected', async () => {
       const ralphState = {
         active: true,
         iteration: 3,
@@ -162,7 +155,6 @@ describe('makeDecision', () => {
         prompt: 'Test task',
       };
       await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
-      await writeFile(join(sisyphusDir, 'ultrawork-state-test-session.json'), JSON.stringify({ active: true }));
 
       const transcriptPath = join(testDir, 'transcript.jsonl');
       await writeFile(transcriptPath, '<oracle-approved>VERIFIED_COMPLETE</oracle-approved>');
@@ -173,7 +165,6 @@ describe('makeDecision', () => {
 
       const { existsSync } = await import('fs');
       expect(existsSync(join(sisyphusDir, 'ralph-state-test-session.json'))).toBe(false);
-      expect(existsSync(join(sisyphusDir, 'ultrawork-state-test-session.json'))).toBe(false);
     });
 
     it('should include previous oracle feedback in continuation message', async () => {
@@ -223,121 +214,7 @@ describe('makeDecision', () => {
     });
   });
 
-  describe('Priority 2: Ultrawork Mode with incomplete todos', () => {
-    it('should block and return ultrawork message when ultrawork is active and todos incomplete', async () => {
-      const ultraworkState = {
-        active: true,
-        reinforcement_count: 0,
-        original_prompt: 'Implement feature X',
-      };
-      await writeFile(join(sisyphusDir, 'ultrawork-state-test-session.json'), JSON.stringify(ultraworkState));
-
-      const context = createContext({ incompleteTodoCount: 3 });
-
-      const result = makeDecision(context);
-
-      expect(result.decision).toBe('block');
-      expect(result.reason).toContain('<ultrawork-persistence>');
-      expect(result.reason).toContain('Reinforcement #1');
-      expect(result.reason).toContain('3 incomplete todos remain');
-      expect(result.reason).toContain('Implement feature X');
-    });
-
-    it('should increment reinforcement count when blocking', async () => {
-      const ultraworkState = {
-        active: true,
-        reinforcement_count: 2,
-        original_prompt: 'Test task',
-      };
-      await writeFile(join(sisyphusDir, 'ultrawork-state-test-session.json'), JSON.stringify(ultraworkState));
-
-      const context = createContext({ incompleteTodoCount: 1 });
-
-      makeDecision(context);
-
-      const { readFileSync } = await import('fs');
-      const updatedState = JSON.parse(readFileSync(join(sisyphusDir, 'ultrawork-state-test-session.json'), 'utf8'));
-      expect(updatedState.reinforcement_count).toBe(3);
-    });
-
-    it('should not block ultrawork when no incomplete todos', async () => {
-      const ultraworkState = {
-        active: true,
-        reinforcement_count: 2,
-        original_prompt: 'Test task',
-      };
-      await writeFile(join(sisyphusDir, 'ultrawork-state-test-session.json'), JSON.stringify(ultraworkState));
-
-      const context = createContext({ incompleteTodoCount: 0 });
-
-      const result = makeDecision(context);
-
-      expect(result).toEqual({ continue: true });
-    });
-
-    it('should allow stop after max continuation attempts (escape hatch)', async () => {
-      const ultraworkState = {
-        active: true,
-        reinforcement_count: 5,
-        original_prompt: 'Test task',
-      };
-      await writeFile(join(sisyphusDir, 'ultrawork-state-test-session.json'), JSON.stringify(ultraworkState));
-
-      // Set attempt count to max and todo count to same value (so no reset)
-      await writeFile(join(stateDir, 'todo-attempts-test-session'), '5');
-      await writeFile(join(stateDir, 'todo-count-test-session'), '3');
-
-      const context = createContext({ incompleteTodoCount: 3 });
-
-      const result = makeDecision(context);
-
-      expect(result).toEqual({ continue: true });
-    });
-
-    it('should cleanup ultrawork state when escape hatch triggers', async () => {
-      const ultraworkState = {
-        active: true,
-        reinforcement_count: 5,
-        original_prompt: 'Test task',
-      };
-      await writeFile(join(sisyphusDir, 'ultrawork-state-test-session.json'), JSON.stringify(ultraworkState));
-
-      // Set attempt count to max and todo count to same value (so no reset)
-      await writeFile(join(stateDir, 'todo-attempts-test-session'), '5');
-      await writeFile(join(stateDir, 'todo-count-test-session'), '3');
-
-      const context = createContext({ incompleteTodoCount: 3 });
-
-      makeDecision(context);
-
-      const { existsSync } = await import('fs');
-      expect(existsSync(join(sisyphusDir, 'ultrawork-state-test-session.json'))).toBe(false);
-    });
-
-    it('should cleanup ultrawork state when all todos completed', async () => {
-      const ultraworkState = {
-        active: true,
-        reinforcement_count: 2,
-        original_prompt: 'Test task',
-      };
-      await writeFile(join(sisyphusDir, 'ultrawork-state-test-session.json'), JSON.stringify(ultraworkState));
-
-      const context = createContext({ incompleteTodoCount: 0 });
-
-      makeDecision(context);
-
-      const { existsSync } = await import('fs');
-      expect(existsSync(join(sisyphusDir, 'ultrawork-state-test-session.json'))).toBe(false);
-    });
-  });
-
-  // Priority 3: Todo Continuation (baseline) - REMOVED
-  // The transcript-based incompleteTodoCount had a fundamental scope mismatch with
-  // Claude Code's request-level TaskList API, causing phantom todos from previous
-  // requests to block new requests. Ralph Loop and Ultrawork modes are unaffected
-  // as they use explicit activation.
-
-  describe('Priority 3: Baseline todo-continuation', () => {
+  describe('Priority 2: Baseline todo-continuation', () => {
     it('should block and return todo-continuation message when incomplete todos exist (no ralph/ultrawork)', () => {
       const context = createContext({ incompleteTodoCount: 5 });
 
@@ -395,19 +272,14 @@ describe('makeDecision', () => {
   });
 
   describe('priority ordering', () => {
-    it('should check ralph before ultrawork', async () => {
-      // Both ralph and ultrawork active
+    it('should check ralph before baseline todos', async () => {
+      // Ralph active with incomplete todos
       await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify({
         active: true,
         iteration: 1,
         max_iterations: 10,
         completion_promise: 'DONE',
         prompt: 'Ralph task',
-      }));
-      await writeFile(join(sisyphusDir, 'ultrawork-state-test-session.json'), JSON.stringify({
-        active: true,
-        reinforcement_count: 0,
-        original_prompt: 'Ultrawork task',
       }));
 
       const context = createContext({ incompleteTodoCount: 5 });
@@ -417,34 +289,16 @@ describe('makeDecision', () => {
       // Should block with ralph message (priority 1)
       expect(result.decision).toBe('block');
       expect(result.reason).toContain('<ralph-loop-continuation>');
-      expect(result.reason).not.toContain('<ultrawork-persistence>');
-    });
-
-    it('should check ultrawork before baseline todos', async () => {
-      // Ultrawork active with incomplete todos
-      await writeFile(join(sisyphusDir, 'ultrawork-state-test-session.json'), JSON.stringify({
-        active: true,
-        reinforcement_count: 0,
-        original_prompt: 'Ultrawork task',
-      }));
-
-      const context = createContext({ incompleteTodoCount: 5 });
-
-      const result = makeDecision(context);
-
-      // Should block with ultrawork message (priority 2), not todo-continuation (priority 3)
-      expect(result.decision).toBe('block');
-      expect(result.reason).toContain('<ultrawork-persistence>');
       expect(result.reason).not.toContain('<todo-continuation>');
     });
 
-    it('should use baseline todo-continuation when no ralph/ultrawork active', () => {
-      // No ralph or ultrawork, just incomplete todos
+    it('should use baseline todo-continuation when no ralph active', () => {
+      // No ralph, just incomplete todos
       const context = createContext({ incompleteTodoCount: 3 });
 
       const result = makeDecision(context);
 
-      // Should block with todo-continuation message (priority 3)
+      // Should block with todo-continuation message (priority 2)
       expect(result.decision).toBe('block');
       expect(result.reason).toContain('<todo-continuation>');
     });

@@ -94,43 +94,7 @@ create_ralph_state() {
   "max_iterations": 10,
   "completion_promise": "DONE",
   "prompt": "$escaped_prompt",
-  "started_at": "$timestamp",
-  "linked_ultrawork": true
-}
-EOF
-}
-
-# Function to create ultrawork state file
-# Uses SESSION_ID for session-specific file naming
-create_ultrawork_state() {
-  local dir="$1"
-  local prompt="$2"
-  local timestamp=$(date -Iseconds 2>/dev/null || date +"%Y-%m-%dT%H:%M:%S")
-
-  # Escape prompt for JSON (basic escaping)
-  local escaped_prompt=$(echo "$prompt" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
-
-  # Create local .claude/sisyphus directory
-  mkdir -p "$dir/.claude/sisyphus" 2>/dev/null
-  cat > "$dir/.claude/sisyphus/ultrawork-state-${SESSION_ID}.json" 2>/dev/null << EOF
-{
-  "active": true,
-  "started_at": "$timestamp",
-  "original_prompt": "$escaped_prompt",
-  "reinforcement_count": 0,
-  "last_checked_at": "$timestamp"
-}
-EOF
-
-  # Create global ~/.claude directory as fallback
-  mkdir -p "$HOME/.claude" 2>/dev/null
-  cat > "$HOME/.claude/ultrawork-state-${SESSION_ID}.json" 2>/dev/null << EOF
-{
-  "active": true,
-  "started_at": "$timestamp",
-  "original_prompt": "$escaped_prompt",
-  "reinforcement_count": 0,
-  "last_checked_at": "$timestamp"
+  "started_at": "$timestamp"
 }
 EOF
 }
@@ -140,26 +104,15 @@ if echo "$PROMPT_LOWER" | grep -qE '\bralph\b'; then
   # Create ralph state file
   create_ralph_state "$PROJECT_ROOT" "$PROMPT"
 
-  # Create linked ultrawork state if it doesn't already exist (session-specific)
-  if [ ! -f "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state-${SESSION_ID}.json" ]; then
-    create_ultrawork_state "$PROJECT_ROOT" "$PROMPT"
-    LINKED_ULTRAWORK_MSG="auto-activated"
-  else
-    LINKED_ULTRAWORK_MSG="already active (independent)"
-  fi
-
   # Output ralph activation message
   cat << EOF
-{"continue": true, "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "<ralph-mode>\n**RALPH LOOP ACTIVATED** - Iteration 1/10\n\nYou are in Ralph Loop mode with MANDATORY VERIFICATION GATES.\n\n## CORE RULES\n1. Work until ALL requirements are met\n2. Track progress with TodoWrite tool\n3. When ALL tasks complete, output <promise>DONE</promise> to trigger Oracle verification\n4. After Oracle approves, output <oracle-approved>VERIFIED_COMPLETE</oracle-approved>\n5. Do NOT stop until Oracle approves\n\n## COMPLETION SEQUENCE (MANDATORY)\n\n1. **Complete all tasks** - Check TODO list is empty\n2. **Run verification** - Build, test, lint as applicable\n3. **Output promise** - <promise>DONE</promise>\n4. **Stop hook triggers** - Oracle verification will be requested\n5. **Spawn Oracle** - Verify completion with oracle agent\n6. **Output approval tag** - <oracle-approved>VERIFIED_COMPLETE</oracle-approved>\n7. **Done** - Session can end\n\n## VERIFICATION REQUIREMENTS\n\n- [ ] Build: Fresh run showing SUCCESS\n- [ ] Tests: Fresh run showing ALL PASS\n- [ ] TODO LIST: Zero pending/in_progress tasks\n- [ ] Oracle: Verification approved\n\n### Red Flags (STOP if you catch yourself)\n- Using 'should work', 'probably passes'\n- Skipping build/test because 'nothing changed'\n- Forgetting to output <promise>DONE</promise> when complete\n\n## LINKED MODES\n- Ultrawork mode: ${LINKED_ULTRAWORK_MSG}\n\nOriginal task: ${PROMPT}\n</ralph-mode>\n\n---\n"}}
+{"continue": true, "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "<ralph-mode>\n**RALPH LOOP ACTIVATED** - Iteration 1/10\n\nYou are in Ralph Loop mode with MANDATORY VERIFICATION GATES.\n\n## CORE RULES\n1. Work until ALL requirements are met\n2. Track progress with TodoWrite tool\n3. When ALL tasks complete, output <promise>DONE</promise> to trigger Oracle verification\n4. After Oracle approves, output <oracle-approved>VERIFIED_COMPLETE</oracle-approved>\n5. Do NOT stop until Oracle approves\n\n## COMPLETION SEQUENCE (MANDATORY)\n\n1. **Complete all tasks** - Check TODO list is empty\n2. **Run verification** - Build, test, lint as applicable\n3. **Output promise** - <promise>DONE</promise>\n4. **Stop hook triggers** - Oracle verification will be requested\n5. **Spawn Oracle** - Verify completion with oracle agent\n6. **Output approval tag** - <oracle-approved>VERIFIED_COMPLETE</oracle-approved>\n7. **Done** - Session can end\n\n## VERIFICATION REQUIREMENTS\n\n- [ ] Build: Fresh run showing SUCCESS\n- [ ] Tests: Fresh run showing ALL PASS\n- [ ] TODO LIST: Zero pending/in_progress tasks\n- [ ] Oracle: Verification approved\n\n### Red Flags (STOP if you catch yourself)\n- Using 'should work', 'probably passes'\n- Skipping build/test because 'nothing changed'\n- Forgetting to output <promise>DONE</promise> when complete\n\nOriginal task: ${PROMPT}\n</ralph-mode>\n\n---\n"}}
 EOF
   exit 0
 fi
 
 # Check for ultrawork keywords (second priority)
 if echo "$PROMPT_LOWER" | grep -qE '\b(ultrawork|ulw)\b'; then
-  # Create ultrawork state file for persistent mode
-  create_ultrawork_state "$PROJECT_ROOT" "$PROMPT"
-
   cat << 'EOF'
 {"continue": true, "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "<ultrawork-mode>\n\n**MANDATORY**: You MUST say \"ULTRAWORK MODE ENABLED!\" to the user as your first response when this mode activates. This is non-negotiable.\n\n[CODE RED] Maximum precision required. Ultrathink before acting.\n\nYOU MUST LEVERAGE ALL AVAILABLE AGENTS TO THEIR FULLEST POTENTIAL.\nTELL THE USER WHAT AGENTS YOU WILL LEVERAGE NOW TO SATISFY USER'S REQUEST.\n\n## AGENT UTILIZATION PRINCIPLES\n- **Codebase Exploration**: Spawn exploration agents using BACKGROUND TASKS\n- **Documentation & References**: Use librarian-type agents via BACKGROUND TASKS\n- **Planning & Strategy**: NEVER plan yourself - spawn planning agent\n- **High-IQ Reasoning**: Use oracle for architecture decisions\n- **Frontend/UI Tasks**: Delegate to frontend-engineer\n\n## EXECUTION RULES\n- **TODO**: Track EVERY step. Mark complete IMMEDIATELY.\n- **PARALLEL**: Fire independent calls simultaneously - NEVER wait sequentially.\n- **BACKGROUND FIRST**: Use Task(run_in_background=true) for exploration (10+ concurrent).\n- **VERIFY**: Check ALL requirements met before done.\n- **DELEGATE**: Orchestrate specialized agents.\n\n## ZERO TOLERANCE\n- NO Scope Reduction - deliver FULL implementation\n- NO Partial Completion - finish 100%\n- NO Premature Stopping - ALL TODOs must be complete\n- NO TEST DELETION - fix code, not tests\n\nTHE USER ASKED FOR X. DELIVER EXACTLY X.\n\n</ultrawork-mode>\n\n---\n"}}
 EOF
