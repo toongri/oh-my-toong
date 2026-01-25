@@ -1,5 +1,5 @@
 import { formatStatusLine, formatMinimalStatus, formatStatusLineV2 } from './formatter.js';
-import { ANSI, type HudData, type HudDataV2, type RalphState, type UltraworkState, type AgentInfo } from './types.js';
+import { ANSI, type HudData, type HudDataV2, type RalphState, type AgentInfo } from './types.js';
 
 // Helper to create complete ralph state for tests
 function createRalphState(overrides: Partial<RalphState> & Pick<RalphState, 'active' | 'iteration' | 'max_iterations'>): RalphState {
@@ -7,18 +7,6 @@ function createRalphState(overrides: Partial<RalphState> & Pick<RalphState, 'act
     completion_promise: 'DONE',
     prompt: 'test prompt',
     started_at: '2025-01-22T10:00:00+09:00',
-    linked_ultrawork: false,
-    ...overrides,
-  };
-}
-
-// Helper to create complete ultrawork state for tests
-function createUltraworkState(overrides: Partial<UltraworkState> & Pick<UltraworkState, 'active'>): UltraworkState {
-  return {
-    started_at: '2025-01-22T10:00:00+09:00',
-    original_prompt: 'test prompt',
-    reinforcement_count: 0,
-    linked_to_ralph: false,
     ...overrides,
   };
 }
@@ -29,7 +17,6 @@ describe('formatStatusLine', () => {
   const emptyData: HudData = {
     contextPercent: null,
     ralph: null,
-    ultrawork: null,
     runningAgents: 0,
     backgroundTasks: 0,
     activeSkill: null,
@@ -107,27 +94,6 @@ describe('formatStatusLine', () => {
       };
       const result = formatStatusLine(data);
       expect(result).not.toContain('fb:');
-    });
-  });
-
-  describe('ultrawork status', () => {
-    it('shows ultrawork when active', () => {
-      const data: HudData = {
-        ...emptyData,
-        ultrawork: createUltraworkState({ active: true }),
-      };
-      const result = formatStatusLine(data);
-      expect(result).toContain('ultrawork');
-      expect(result).toContain(ANSI.green);
-    });
-
-    it('does not show ultrawork when inactive', () => {
-      const data: HudData = {
-        ...emptyData,
-        ultrawork: createUltraworkState({ active: false }),
-      };
-      const result = formatStatusLine(data);
-      expect(result).not.toContain('ultrawork');
     });
   });
 
@@ -246,7 +212,7 @@ describe('formatStatusLine', () => {
       const data: HudData = {
         ...emptyData,
         contextPercent: 50,
-        ultrawork: createUltraworkState({ active: true }),
+        ralph: createRalphState({ active: true, iteration: 2, max_iterations: 10 }),
       };
       const result = formatStatusLine(data);
       expect(result).toContain(' | ');
@@ -285,7 +251,6 @@ describe('formatStatusLineV2', () => {
   const emptyDataV2: HudDataV2 = {
     contextPercent: null,
     ralph: null,
-    ultrawork: null,
     runningAgents: 0,
     backgroundTasks: 0,
     activeSkill: null,
@@ -298,9 +263,9 @@ describe('formatStatusLineV2', () => {
   };
 
   describe('prefix', () => {
-    it('shows [OMT] prefix with bold formatting', () => {
+    it('shows session duration prefix with bold formatting', () => {
       const result = formatStatusLineV2(emptyDataV2);
-      expect(result).toContain('[OMT]');
+      expect(result).toContain('0m');
       expect(result).toContain(ANSI.bold);
     });
   });
@@ -514,35 +479,6 @@ describe('formatStatusLineV2', () => {
     });
   });
 
-  describe('ultrawork status', () => {
-    it('shows ultrawork only when active is true', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        ultrawork: createUltraworkState({ active: true }),
-      };
-      const result = formatStatusLineV2(data);
-      expect(result).toContain('ultrawork');
-    });
-
-    it('does not show ultrawork when active is false', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        ultrawork: createUltraworkState({ active: false }),
-      };
-      const result = formatStatusLineV2(data);
-      expect(result).not.toContain('ultrawork');
-    });
-
-    it('applies green color to ultrawork', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        ultrawork: createUltraworkState({ active: true }),
-      };
-      const result = formatStatusLineV2(data);
-      expect(result).toContain(ANSI.green);
-    });
-  });
-
   describe('thinking indicator', () => {
     it('shows thinking when thinkingActive is true', () => {
       const data: HudDataV2 = {
@@ -568,7 +504,7 @@ describe('formatStatusLineV2', () => {
     });
   });
 
-  describe('line 2 - ralph and ultrawork', () => {
+  describe('line 2 - ralph', () => {
     it('shows ralph on line 2 when active', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
@@ -579,102 +515,88 @@ describe('formatStatusLineV2', () => {
       expect(lines.length).toBe(2);
       expect(lines[1]).toContain('ralph:3/10');
     });
-
-    it('shows ultrawork on line 2 when active', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        ultrawork: createUltraworkState({ active: true }),
-      };
-      const result = formatStatusLineV2(data);
-      const lines = result.split('\n');
-      expect(lines.length).toBe(2);
-      expect(lines[1]).toContain('ultrawork');
-    });
-
-    it('shows both ralph and ultrawork on line 2 when both active', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 2, max_iterations: 10 }),
-        ultrawork: createUltraworkState({ active: true }),
-      };
-      const result = formatStatusLineV2(data);
-      const lines = result.split('\n');
-      expect(lines.length).toBe(2);
-      expect(lines[1]).toContain('ralph:2/10');
-      expect(lines[1]).toContain('ultrawork');
-    });
   });
 
-  describe('line 2 - session duration', () => {
-    it('shows session duration in minutes', () => {
+  describe('line 1 - session duration prefix', () => {
+    it('shows session duration in minutes on line 1', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         sessionDuration: 45,
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('session:45m');
+      const line1 = result.split('\n')[0];
+      expect(line1).toContain('45m');
     });
 
-    it('shows session duration in hours and minutes', () => {
+    it('shows session duration in hours and minutes on line 1', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         sessionDuration: 135,
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('session:2h15m');
+      const line1 = result.split('\n')[0];
+      expect(line1).toContain('2h15m');
     });
 
-    it('applies dim color to session duration', () => {
+    it('applies bold color to session duration', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         sessionDuration: 45,
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain(ANSI.dim);
+      expect(result).toContain(ANSI.bold);
     });
 
-    it('does not show session when duration is 0', () => {
+    it('shows 0m when duration is 0', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         sessionDuration: 0,
       };
       const result = formatStatusLineV2(data);
-      expect(result).not.toContain('session:');
+      const line1 = result.split('\n')[0];
+      expect(line1).toContain('0m');
     });
 
-    it('does not show session when duration is null', () => {
+    it('shows 0m when duration is null', () => {
       const result = formatStatusLineV2(emptyDataV2);
-      expect(result).not.toContain('session:');
+      const line1 = result.split('\n')[0];
+      expect(line1).toContain('0m');
     });
   });
 
-  describe('line 2 - todos progress', () => {
-    it('shows todos progress when data.todos exists', () => {
+  describe('line 2 - tasks progress', () => {
+    it('shows tasks progress when data.todos exists', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         todos: { completed: 3, total: 5 },
       };
       const result = formatStatusLineV2(data);
-      expect(result).toContain('todos:3/5');
+      expect(result).toContain('tasks:3/5');
     });
 
-    it('does not show todos when data.todos is null', () => {
+    it('shows tasks:0/0 when data.todos is null', () => {
       const result = formatStatusLineV2(emptyDataV2);
-      expect(result).not.toContain('todos:');
+      expect(result).toContain('tasks:0/0');
     });
 
-    it('applies green color to todos', () => {
+    it('applies green color to tasks when total > 0', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         todos: { completed: 2, total: 4 },
       };
       const result = formatStatusLineV2(data);
-      // todos should have green color
+      // tasks should have green color when total > 0
       const line2 = result.split('\n')[1] || '';
       expect(line2).toContain(ANSI.green);
     });
 
-    it('shows todos on line 2', () => {
+    it('applies dim color to tasks when total is 0', () => {
+      const result = formatStatusLineV2(emptyDataV2);
+      const line2 = result.split('\n')[1] || '';
+      expect(line2).toContain(ANSI.dim);
+    });
+
+    it('shows tasks on line 2', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         todos: { completed: 1, total: 3 },
@@ -682,7 +604,7 @@ describe('formatStatusLineV2', () => {
       const result = formatStatusLineV2(data);
       const lines = result.split('\n');
       expect(lines.length).toBe(2);
-      expect(lines[1]).toContain('todos:1/3');
+      expect(lines[1]).toContain('tasks:1/3');
     });
   });
 
@@ -698,8 +620,11 @@ describe('formatStatusLineV2', () => {
 
     it('does not show in-progress task when data.inProgressTodo is null', () => {
       const result = formatStatusLineV2(emptyDataV2);
-      // Should only have line 1
-      expect(result.split('\n').length).toBe(1);
+      // Should still have 2 lines (line 2 always has tasks)
+      expect(result.split('\n').length).toBe(2);
+      // But line 2 should only have tasks, not in-progress todo
+      const line2 = result.split('\n')[1];
+      expect(line2).toContain('tasks:0/0');
     });
 
     it('applies dim color to in-progress task', () => {
@@ -724,13 +649,13 @@ describe('formatStatusLineV2', () => {
   });
 
   describe('2-line output format', () => {
-    it('returns single line when no line 2 content', () => {
+    it('always returns 2 lines since tasks are always shown on line 2', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         contextPercent: 50,
       };
       const result = formatStatusLineV2(data);
-      expect(result.split('\n').length).toBe(1);
+      expect(result.split('\n').length).toBe(2);
     });
 
     it('returns 2 lines when line 2 content exists (ralph active)', () => {
@@ -744,18 +669,7 @@ describe('formatStatusLineV2', () => {
       expect(lines.length).toBe(2);
     });
 
-    it('returns 2 lines when line 2 content exists (ultrawork active)', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        contextPercent: 50,
-        ultrawork: createUltraworkState({ active: true }),
-      };
-      const result = formatStatusLineV2(data);
-      const lines = result.split('\n');
-      expect(lines.length).toBe(2);
-    });
-
-    it('has line 1 with prefix and main status', () => {
+    it('has line 1 with session duration and main status', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         contextPercent: 50,
@@ -765,12 +679,12 @@ describe('formatStatusLineV2', () => {
       };
       const result = formatStatusLineV2(data);
       const lines = result.split('\n');
-      expect(lines[0]).toContain('[OMT]');
+      expect(lines[0]).toContain('45m');
       expect(lines[0]).toContain('ctx:50%');
       expect(lines[0]).toContain('agents:explore');
     });
 
-    it('has line 2 with ralph and session', () => {
+    it('has line 2 with tasks and ralph', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10 }),
@@ -779,7 +693,7 @@ describe('formatStatusLineV2', () => {
       const result = formatStatusLineV2(data);
       const lines = result.split('\n');
       expect(lines[1]).toContain('ralph:3/10');
-      expect(lines[1]).toContain('session:45m');
+      expect(lines[1]).toContain('tasks:0/0');
     });
   });
 
@@ -807,23 +721,6 @@ describe('formatStatusLineV2', () => {
       expect(agentsIndex).toBeLessThan(thinkingIndex);
     });
 
-    it('maintains correct order on line 2: ralph | ultrawork | session', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 2, max_iterations: 10 }),
-        ultrawork: createUltraworkState({ active: true }),
-        sessionDuration: 45,
-      };
-      const result = formatStatusLineV2(data);
-      const line2 = result.split('\n')[1];
-
-      const ralphIndex = line2.indexOf('ralph:');
-      const ultraworkIndex = line2.indexOf('ultrawork');
-      const sessionIndex = line2.indexOf('session:');
-
-      expect(ralphIndex).toBeLessThan(ultraworkIndex);
-      expect(ultraworkIndex).toBeLessThan(sessionIndex);
-    });
   });
 
   describe('separator', () => {
@@ -840,8 +737,8 @@ describe('formatStatusLineV2', () => {
     it('uses pipe separator between line 2 elements', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        ultrawork: createUltraworkState({ active: true }),
-        sessionDuration: 45,
+        ralph: createRalphState({ active: true, iteration: 2, max_iterations: 10 }),
+        todos: { completed: 3, total: 5 },
       };
       const result = formatStatusLineV2(data);
       const line2 = result.split('\n')[1];
@@ -849,46 +746,21 @@ describe('formatStatusLineV2', () => {
     });
   });
 
-  describe('ralph display without + suffix', () => {
-    it('never shows + suffix on ralph even when linked_ultrawork is true', () => {
+  describe('ralph display', () => {
+    it('shows ralph iteration without + suffix', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, linked_ultrawork: true }),
-        ultrawork: createUltraworkState({ active: true, linked_to_ralph: true }),
+        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10 }),
       };
       const result = formatStatusLineV2(data);
       expect(result).toContain('ralph:3/10');
       expect(result).not.toContain('ralph:3/10+');
     });
 
-    it('skips individual ultrawork display when linked_to_ralph is true', () => {
+    it('shows feedback count alongside ralph iteration', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, linked_ultrawork: true }),
-        ultrawork: createUltraworkState({ active: true, linked_to_ralph: true }),
-      };
-      const result = formatStatusLineV2(data);
-      // Should have ralph:3/10 but not separate "ultrawork" text
-      expect(result).toContain('ralph:3/10');
-      expect(result).not.toMatch(/\bultrawork\b/);
-    });
-
-    it('shows individual ultrawork when linked_to_ralph is false', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, linked_ultrawork: false }),
-        ultrawork: createUltraworkState({ active: true, linked_to_ralph: false }),
-      };
-      const result = formatStatusLineV2(data);
-      expect(result).toContain('ralph:3/10');
-      expect(result).toContain('ultrawork');
-    });
-
-    it('shows feedback count without + suffix when linked and has feedback', () => {
-      const data: HudDataV2 = {
-        ...emptyDataV2,
-        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, linked_ultrawork: true, oracle_feedback: ['feedback1'] }),
-        ultrawork: createUltraworkState({ active: true, linked_to_ralph: true }),
+        ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, oracle_feedback: ['feedback1'] }),
       };
       const result = formatStatusLineV2(data);
       expect(result).toContain('ralph:3/10');

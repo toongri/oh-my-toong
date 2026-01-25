@@ -89,9 +89,6 @@ async function findStateFile(cwd, filename) {
 async function readRalphState(cwd, sessionId = "default") {
   return findStateFile(cwd, `ralph-state-${sessionId}.json`);
 }
-async function readUltraworkState(cwd, sessionId = "default") {
-  return findStateFile(cwd, `ultrawork-state-${sessionId}.json`);
-}
 async function readBackgroundTasks() {
   const tasksDir = join2(homedir(), ".claude", "background-tasks");
   try {
@@ -519,9 +516,6 @@ function formatStatusLineV2(data) {
     }
     line2Parts.push(colorize(text, color));
   }
-  if (data.ultrawork?.active && !data.ultrawork.linked_to_ralph) {
-    line2Parts.push(colorize("ultrawork", ANSI.green));
-  }
   if (data.inProgressTodo) {
     line2Parts.push(colorize(data.inProgressTodo, ANSI.dim));
   }
@@ -549,7 +543,6 @@ async function main() {
     logInfo(`Input: transcript_path=${input.transcript_path}, cwd=${cwd}`);
     const [
       ralph,
-      ultrawork,
       backgroundTasks,
       transcriptData,
       rateLimits,
@@ -558,7 +551,6 @@ async function main() {
       inProgressTodo
     ] = await Promise.all([
       readRalphState(cwd, sessionId),
-      readUltraworkState(cwd, sessionId),
       readBackgroundTasks(),
       input.transcript_path ? parseTranscript(input.transcript_path) : Promise.resolve({ runningAgents: 0, activeSkill: null, agents: [], sessionStartedAt: null }),
       fetchRateLimits(),
@@ -570,7 +562,6 @@ async function main() {
     const hudData = {
       contextPercent: input.context_window?.used_percentage ?? null,
       ralph,
-      ultrawork,
       runningAgents: transcriptData.runningAgents,
       backgroundTasks,
       activeSkill: transcriptData.activeSkill,

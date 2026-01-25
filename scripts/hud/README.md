@@ -6,7 +6,6 @@ A statusLine-based Heads-Up Display for Claude Code, showing real-time session s
 
 - **Context Window Usage**: See how much of your context is used
 - **Ralph Loop Status**: Track iteration progress with color-coded warnings
-- **Ultrawork Mode**: Know when ultrawork mode is active
 - **Running Agents**: Count of active subagents
 - **Background Tasks**: Count of background processes
 - **Todo Progress**: Track task completion
@@ -15,7 +14,7 @@ A statusLine-based Heads-Up Display for Claude Code, showing real-time session s
 ## Display Format
 
 ```
-[OMC] ralph:3/10 | ultrawork | ctx:67% | agents:2 | bg:1 | todos:2/5 | skill:prometheus
+[OMC] ralph:3/10 | ctx:67% | agents:2 | bg:1 | todos:2/5 | skill:prometheus
 ```
 
 ### Color Coding
@@ -81,7 +80,6 @@ Or manually:
 |---------|--------|
 | Context % | stdin JSON from Claude Code |
 | Ralph status | `.claude/sisyphus/ralph-state.json` (includes oracle_feedback) |
-| Ultrawork | `.claude/sisyphus/ultrawork-state.json` |
 | Todos | `.claude/sisyphus/todos.json` + `~/.claude/todos/*.json` |
 | Agents | `transcript.jsonl` parsing |
 | Skills | `transcript.jsonl` parsing |

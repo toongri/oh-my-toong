@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import type { StdinInput, RalphState, UltraworkState, RateLimitData } from './types.js';
+import type { StdinInput, RalphState, RateLimitData } from './types.js';
 import type { TranscriptResult } from './transcript.js';
 
 // Mock modules before imports
@@ -14,7 +14,6 @@ const mockLogError = jest.fn<(message: string) => void>();
 const mockLogStart = jest.fn<() => void>();
 const mockLogEnd = jest.fn<() => void>();
 const mockReadRalphState = jest.fn<(cwd: string, sessionId?: string) => Promise<RalphState | null>>();
-const mockReadUltraworkState = jest.fn<(cwd: string, sessionId?: string) => Promise<UltraworkState | null>>();
 const mockReadBackgroundTasks = jest.fn<() => Promise<number>>();
 const mockCalculateSessionDuration = jest.fn<(startedAt: Date | null) => number | null>();
 const mockIsThinkingEnabled = jest.fn<() => Promise<boolean>>();
@@ -31,7 +30,6 @@ jest.unstable_mockModule('./stdin.js', () => ({
 
 jest.unstable_mockModule('./state.js', () => ({
   readRalphState: mockReadRalphState,
-  readUltraworkState: mockReadUltraworkState,
   readBackgroundTasks: mockReadBackgroundTasks,
   calculateSessionDuration: mockCalculateSessionDuration,
   isThinkingEnabled: mockIsThinkingEnabled,
@@ -74,7 +72,6 @@ describe('main', () => {
 
     // Default mock implementations
     mockReadRalphState.mockResolvedValue(null);
-    mockReadUltraworkState.mockResolvedValue(null);
     mockReadBackgroundTasks.mockResolvedValue(0);
     mockCalculateSessionDuration.mockReturnValue(null);
     mockIsThinkingEnabled.mockResolvedValue(false);
@@ -147,7 +144,6 @@ describe('main', () => {
       await main();
 
       expect(mockReadRalphState).toHaveBeenCalledWith('/my/project', 'test-session');
-      expect(mockReadUltraworkState).toHaveBeenCalledWith('/my/project', 'test-session');
     });
 
     it('fetches rate limits', async () => {
@@ -248,15 +244,7 @@ describe('main', () => {
         completion_promise: 'DONE',
         prompt: 'test',
         started_at: '2025-01-22T10:00:00+09:00',
-        linked_ultrawork: false,
         oracle_feedback: ['First rejection reason'],
-      };
-      const ultraworkState: UltraworkState = {
-        active: true,
-        started_at: '2025-01-22T10:00:00+09:00',
-        original_prompt: 'test',
-        reinforcement_count: 0,
-        linked_to_ralph: false,
       };
       const rateLimits: RateLimitData = {
         fiveHour: { percent: 25, resetIn: '3h' },
@@ -276,7 +264,6 @@ describe('main', () => {
         },
       });
       mockReadRalphState.mockResolvedValue(ralphState);
-      mockReadUltraworkState.mockResolvedValue(ultraworkState);
       mockReadBackgroundTasks.mockResolvedValue(2);
       mockParseTranscript.mockResolvedValue({
         runningAgents: 3,
@@ -295,7 +282,6 @@ describe('main', () => {
       expect(mockFormatStatusLineV2).toHaveBeenCalledWith({
         contextPercent: 50,
         ralph: ralphState,
-        ultrawork: ultraworkState,
         runningAgents: 3,
         backgroundTasks: 2,
         activeSkill: 'prometheus',
@@ -411,12 +397,12 @@ describe('main', () => {
           context_window_size: 200000,
         },
       });
-      mockFormatStatusLineV2.mockReturnValue('[OMT] | ctx:50%\nultrawork | session:45m');
+      mockFormatStatusLineV2.mockReturnValue('[OMT] | ctx:50%\nralph:2/10 | session:45m');
 
       await main();
 
       // Should convert spaces on both lines to non-breaking spaces
-      expect(consoleLogSpy).toHaveBeenCalledWith('[OMT]\u00A0|\u00A0ctx:50%\nultrawork\u00A0|\u00A0session:45m');
+      expect(consoleLogSpy).toHaveBeenCalledWith('[OMT]\u00A0|\u00A0ctx:50%\nralph:2/10\u00A0|\u00A0session:45m');
     });
 
     it('converts spaces in minimal status output', async () => {

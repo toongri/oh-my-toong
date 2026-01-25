@@ -1,5 +1,5 @@
 import { readStdin } from './stdin.js';
-import { readRalphState, readUltraworkState, readBackgroundTasks, calculateSessionDuration, isThinkingEnabled, readTasks, getActiveTaskForm } from './state.js';
+import { readRalphState, readBackgroundTasks, calculateSessionDuration, isThinkingEnabled, readTasks, getActiveTaskForm } from './state.js';
 import { parseTranscript } from './transcript.js';
 import { fetchRateLimits } from './usage-api.js';
 import { formatStatusLineV2, formatMinimalStatus } from './formatter.js';
@@ -37,7 +37,6 @@ export async function main(): Promise<void> {
     // Gather data from all sources in parallel
     const [
       ralph,
-      ultrawork,
       backgroundTasks,
       transcriptData,
       rateLimits,
@@ -46,7 +45,6 @@ export async function main(): Promise<void> {
       inProgressTodo,
     ] = await Promise.all([
       readRalphState(cwd, sessionId),
-      readUltraworkState(cwd, sessionId),
       readBackgroundTasks(),
       input.transcript_path
         ? parseTranscript(input.transcript_path)
@@ -63,7 +61,6 @@ export async function main(): Promise<void> {
     const hudData: HudDataV2 = {
       contextPercent: input.context_window?.used_percentage ?? null,
       ralph,
-      ultrawork,
       runningAgents: transcriptData.runningAgents,
       backgroundTasks,
       activeSkill: transcriptData.activeSkill,

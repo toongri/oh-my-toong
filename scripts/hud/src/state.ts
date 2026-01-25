@@ -1,7 +1,7 @@
 import { readFile, readdir, stat } from 'fs/promises';
 import { join } from 'path';
 import { homedir } from 'os';
-import type { RalphState, UltraworkState } from './types.js';
+import type { RalphState } from './types.js';
 import { readTasksFromDirectory, countIncompleteTasks, getInProgressTask } from '../../lib/dist/task-reader.js';
 
 /**
@@ -52,10 +52,6 @@ async function findStateFile<T>(cwd: string, filename: string): Promise<T | null
 
 export async function readRalphState(cwd: string, sessionId: string = 'default'): Promise<RalphState | null> {
   return findStateFile<RalphState>(cwd, `ralph-state-${sessionId}.json`);
-}
-
-export async function readUltraworkState(cwd: string, sessionId: string = 'default'): Promise<UltraworkState | null> {
-  return findStateFile<UltraworkState>(cwd, `ultrawork-state-${sessionId}.json`);
 }
 
 export async function readBackgroundTasks(): Promise<number> {

@@ -20,25 +20,13 @@ export interface RalphState {
   completion_promise: string;
   prompt: string;
   started_at: string;
-  linked_ultrawork: boolean;
   oracle_feedback?: string[];
-}
-
-// ultrawork-state.json
-export interface UltraworkState {
-  active: boolean;
-  started_at: string;
-  original_prompt: string;
-  reinforcement_count: number;
-  last_checked_at?: string;
-  linked_to_ralph: boolean;
 }
 
 // Aggregated HUD data
 export interface HudData {
   contextPercent: number | null;
   ralph: RalphState | null;
-  ultrawork: UltraworkState | null;
   runningAgents: number;
   backgroundTasks: number;
   activeSkill: string | null;
@@ -81,7 +69,6 @@ export interface AgentInfo {
 export interface HudDataV2 {
   contextPercent: number | null;
   ralph: RalphState | null;
-  ultrawork: UltraworkState | null;
   runningAgents: number;
   backgroundTasks: number;
   activeSkill: string | null;

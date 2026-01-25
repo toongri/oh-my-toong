@@ -1,7 +1,6 @@
 import type {
   StdinInput,
   RalphState,
-  UltraworkState,
   HudData,
   UsageResponse,
   UsageLimit,
@@ -58,40 +57,11 @@ describe('types', () => {
         completion_promise: 'Complete the task',
         prompt: 'Original prompt',
         started_at: '2024-01-22T10:00:00Z',
-        linked_ultrawork: false,
       };
 
       expect(state.active).toBe(true);
       expect(state.iteration).toBe(2);
       expect(state.max_iterations).toBe(5);
-    });
-  });
-
-  describe('UltraworkState', () => {
-    it('should accept valid ultrawork state structure', () => {
-      const state: UltraworkState = {
-        active: true,
-        started_at: '2024-01-22T10:00:00Z',
-        original_prompt: 'Original prompt',
-        reinforcement_count: 3,
-        linked_to_ralph: true,
-      };
-
-      expect(state.active).toBe(true);
-      expect(state.reinforcement_count).toBe(3);
-    });
-
-    it('should accept optional last_checked_at field', () => {
-      const state: UltraworkState = {
-        active: true,
-        started_at: '2024-01-22T10:00:00Z',
-        original_prompt: 'Original prompt',
-        reinforcement_count: 3,
-        last_checked_at: '2024-01-22T11:00:00Z',
-        linked_to_ralph: false,
-      };
-
-      expect(state.last_checked_at).toBe('2024-01-22T11:00:00Z');
     });
   });
 
@@ -102,7 +72,6 @@ describe('types', () => {
       const data: HudData = {
         contextPercent: null,
         ralph: null,
-        ultrawork: null,
         runningAgents: 0,
         backgroundTasks: 0,
         activeSkill: null,
@@ -122,14 +91,6 @@ describe('types', () => {
           completion_promise: 'Promise',
           prompt: 'Prompt',
           started_at: '2024-01-22T10:00:00Z',
-          linked_ultrawork: true,
-        },
-        ultrawork: {
-          active: true,
-          started_at: '2024-01-22T10:00:00Z',
-          original_prompt: 'Prompt',
-          reinforcement_count: 1,
-          linked_to_ralph: true,
         },
         runningAgents: 2,
         backgroundTasks: 1,
@@ -272,7 +233,6 @@ describe('types', () => {
       const data: HudDataV2 = {
         contextPercent: null,
         ralph: null,
-        ultrawork: null,
         runningAgents: 0,
         backgroundTasks: 0,
         activeSkill: null,
@@ -303,14 +263,6 @@ describe('types', () => {
           completion_promise: 'Promise',
           prompt: 'Prompt',
           started_at: '2024-01-22T10:00:00Z',
-          linked_ultrawork: true,
-        },
-        ultrawork: {
-          active: true,
-          started_at: '2024-01-22T10:00:00Z',
-          original_prompt: 'Prompt',
-          reinforcement_count: 1,
-          linked_to_ralph: true,
         },
         runningAgents: 2,
         backgroundTasks: 1,

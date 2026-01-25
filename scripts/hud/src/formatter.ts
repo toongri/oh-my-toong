@@ -35,11 +35,6 @@ export function formatStatusLine(data: HudData): string {
     parts.push(colorize(ralphText, color));
   }
 
-  // Ultrawork status
-  if (data.ultrawork?.active) {
-    parts.push(colorize('ultrawork', ANSI.green));
-  }
-
   // Context window percentage (most reliable)
   if (data.contextPercent !== null) {
     const percent = Math.min(100, Math.round(data.contextPercent));
@@ -154,11 +149,6 @@ export function formatStatusLineV2(data: HudDataV2): string {
       text += ` fb:${data.ralph.oracle_feedback.length}`;
     }
     line2Parts.push(colorize(text, color));
-  }
-
-  // Line 2: Ultrawork (only when active and not linked to ralph)
-  if (data.ultrawork?.active && !data.ultrawork.linked_to_ralph) {
-    line2Parts.push(colorize('ultrawork', ANSI.green));
   }
 
   // In-progress task (only if one is active)
