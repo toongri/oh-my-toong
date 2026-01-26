@@ -13,4 +13,6 @@
 
 # node
 node_modules/
-/.omt/
+
+# omt state directories (project root and test artifacts)
+.omt/

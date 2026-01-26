@@ -45,7 +45,7 @@ describe('logging module', () => {
 
       // Directory should exist after first log
       logInfo('test message');
-      const logDir = join(projectRoot, '.claude', 'sisyphus', 'logs');
+      const logDir = join(projectRoot, '.omt', 'logs');
       expect(existsSync(logDir)).toBe(true);
     });
 
@@ -55,7 +55,7 @@ describe('logging module', () => {
       initLogger('my-component', projectRoot);
       logInfo('test');
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'my-component-default.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'my-component-default.log');
       expect(existsSync(logPath)).toBe(true);
     });
 
@@ -65,7 +65,7 @@ describe('logging module', () => {
       initLogger('comp', projectRoot, 'session/with:special*chars?');
       logInfo('test');
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'comp-session-with-special-chars-.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'comp-session-with-special-chars-.log');
       expect(existsSync(logPath)).toBe(true);
     });
 
@@ -94,7 +94,7 @@ describe('logging module', () => {
       initLogger('format-comp', projectRoot, 'fmt-session');
       logInfo('test message');
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'format-comp-fmt-session.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'format-comp-fmt-session.log');
       const content = await readFile(logPath, 'utf-8');
 
       // Should match format: [2024-01-15T10:30:00.000Z] [INFO] [format-comp] test message
@@ -117,7 +117,7 @@ describe('logging module', () => {
       logDebug('debug message');
       logInfo('info message');
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'level-comp-level-session.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'level-comp-level-session.log');
       const content = await readFile(logPath, 'utf-8');
 
       expect(content).not.toContain('debug message');
@@ -131,7 +131,7 @@ describe('logging module', () => {
       initLogger('env-comp', projectRoot, 'env-session');
       logDebug('debug message');
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'env-comp-env-session.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'env-comp-env-session.log');
       const content = await readFile(logPath, 'utf-8');
 
       expect(content).toContain('[DEBUG]');
@@ -148,7 +148,7 @@ describe('logging module', () => {
       logWarn('warn');
       logError('error');
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'filter-comp-filter-session.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'filter-comp-filter-session.log');
       const content = await readFile(logPath, 'utf-8');
 
       expect(content).not.toContain('[DEBUG]');
@@ -166,7 +166,7 @@ describe('logging module', () => {
       initLogger('debug-test', projectRoot, 'session');
       logDebug('debug message');
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'debug-test-session.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'debug-test-session.log');
       const content = await readFile(logPath, 'utf-8');
 
       expect(content).toContain('[DEBUG]');
@@ -178,7 +178,7 @@ describe('logging module', () => {
       initLogger('info-test', projectRoot, 'session');
       logInfo('info message');
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'info-test-session.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'info-test-session.log');
       const content = await readFile(logPath, 'utf-8');
 
       expect(content).toContain('[INFO]');
@@ -190,7 +190,7 @@ describe('logging module', () => {
       initLogger('warn-test', projectRoot, 'session');
       logWarn('warn message');
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'warn-test-session.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'warn-test-session.log');
       const content = await readFile(logPath, 'utf-8');
 
       expect(content).toContain('[WARN]');
@@ -202,7 +202,7 @@ describe('logging module', () => {
       initLogger('error-test', projectRoot, 'session');
       logError('error message');
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'error-test-session.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'error-test-session.log');
       const content = await readFile(logPath, 'utf-8');
 
       expect(content).toContain('[ERROR]');
@@ -216,7 +216,7 @@ describe('logging module', () => {
       initLogger('start-test', projectRoot, 'session');
       logStart();
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'start-test-session.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'start-test-session.log');
       const content = await readFile(logPath, 'utf-8');
 
       expect(content).toContain('========== START ==========');
@@ -228,7 +228,7 @@ describe('logging module', () => {
       initLogger('end-test', projectRoot, 'session');
       logEnd();
 
-      const logPath = join(projectRoot, '.claude', 'sisyphus', 'logs', 'end-test-session.log');
+      const logPath = join(projectRoot, '.omt', 'logs', 'end-test-session.log');
       const content = await readFile(logPath, 'utf-8');
 
       expect(content).toContain('========== END ==========');

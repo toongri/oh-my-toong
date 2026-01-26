@@ -19,11 +19,11 @@ import { tmpdir, homedir } from 'os';
 describe('Ralph state management', () => {
   const testDir = join(tmpdir(), 'state-test-ralph-' + Date.now());
   const projectRoot = join(testDir, 'project');
-  const sisyphusDir = join(projectRoot, '.claude', 'sisyphus');
+  const omtDir = join(projectRoot, '.omt');
   const sessionId = 'test-session';
 
   beforeAll(async () => {
-    await mkdir(sisyphusDir, { recursive: true });
+    await mkdir(omtDir, { recursive: true });
   });
 
   afterAll(async () => {
@@ -32,7 +32,7 @@ describe('Ralph state management', () => {
 
   beforeEach(async () => {
     // Clean up state files before each test
-    const stateFile = join(sisyphusDir, `ralph-state-${sessionId}.json`);
+    const stateFile = join(omtDir, `ralph-state-${sessionId}.json`);
     try { await rm(stateFile, { force: true }); } catch {}
   });
 
@@ -52,7 +52,7 @@ describe('Ralph state management', () => {
         prompt: 'Test task',
       };
       await writeFile(
-        join(sisyphusDir, `ralph-state-${sessionId}.json`),
+        join(omtDir, `ralph-state-${sessionId}.json`),
         JSON.stringify(state)
       );
 
@@ -73,7 +73,7 @@ describe('Ralph state management', () => {
         prompt: 'Completed task',
       };
       await writeFile(
-        join(sisyphusDir, `ralph-state-${sessionId}.json`),
+        join(omtDir, `ralph-state-${sessionId}.json`),
         JSON.stringify(state)
       );
 
@@ -84,7 +84,7 @@ describe('Ralph state management', () => {
 
     it('should return null for invalid JSON', async () => {
       await writeFile(
-        join(sisyphusDir, `ralph-state-${sessionId}.json`),
+        join(omtDir, `ralph-state-${sessionId}.json`),
         'invalid json {'
       );
 
@@ -108,7 +108,7 @@ describe('Ralph state management', () => {
       updateRalphState(projectRoot, sessionId, state);
 
       const content = await readFile(
-        join(sisyphusDir, `ralph-state-${sessionId}.json`),
+        join(omtDir, `ralph-state-${sessionId}.json`),
         'utf8'
       );
       const parsed = JSON.parse(content);
@@ -128,14 +128,14 @@ describe('Ralph state management', () => {
 
       updateRalphState(newProjectRoot, sessionId, state);
 
-      const stateFile = join(newProjectRoot, '.claude', 'sisyphus', `ralph-state-${sessionId}.json`);
+      const stateFile = join(newProjectRoot, '.omt', `ralph-state-${sessionId}.json`);
       expect(existsSync(stateFile)).toBe(true);
     });
   });
 
   describe('cleanupRalphState', () => {
     it('should delete session-specific state file', async () => {
-      const stateFile = join(sisyphusDir, `ralph-state-${sessionId}.json`);
+      const stateFile = join(omtDir, `ralph-state-${sessionId}.json`);
       await writeFile(stateFile, '{}');
 
       cleanupRalphState(projectRoot, sessionId);

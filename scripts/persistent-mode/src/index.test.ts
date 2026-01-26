@@ -8,7 +8,7 @@ import { existsSync } from 'fs';
 describe('main entry point', () => {
   const testDir = join(tmpdir(), 'persistent-mode-index-test-' + Date.now());
   const projectRoot = join(testDir, 'project');
-  const sisyphusDir = join(projectRoot, '.claude', 'sisyphus');
+  const omtDir = join(projectRoot, '.omt');
 
   // Save original process methods
   const originalStdin = process.stdin;
@@ -20,7 +20,7 @@ describe('main entry point', () => {
   let capturedErrors: string[] = [];
 
   beforeAll(async () => {
-    await mkdir(sisyphusDir, { recursive: true });
+    await mkdir(omtDir, { recursive: true });
     // Create .git directory to make it a project root
     await mkdir(join(projectRoot, '.git'), { recursive: true });
   });
@@ -84,7 +84,7 @@ describe('main entry point', () => {
     it('should output block decision when ralph is active', async () => {
       // Set up ralph state
       await writeFile(
-        join(sisyphusDir, 'ralph-state-ralph-session.json'),
+        join(omtDir, 'ralph-state-ralph-session.json'),
         JSON.stringify({
           active: true,
           iteration: 1,
@@ -230,7 +230,7 @@ describe('main entry point', () => {
     const originalHomedir = process.env.HOME;
 
     beforeAll(async () => {
-      await mkdir(join(taskProjectRoot, '.claude', 'sisyphus'), { recursive: true });
+      await mkdir(join(taskProjectRoot, '.omt'), { recursive: true });
       await mkdir(join(taskProjectRoot, '.git'), { recursive: true });
       // Create mock home directory structure for tasks
       await mkdir(join(taskTestDir, 'home', '.claude', 'tasks', sessionId), { recursive: true });
@@ -284,7 +284,7 @@ describe('main entry point', () => {
       await main();
 
       // Verify via logs that file-based task counting was used
-      const logsDir = join(taskProjectRoot, '.claude', 'sisyphus', 'logs');
+      const logsDir = join(taskProjectRoot, '.omt', 'logs');
       const logFile = join(logsDir, `persistent-mode-${sessionId}.log`);
       const logContent = await readFile(logFile, 'utf-8');
 
@@ -299,10 +299,10 @@ describe('main entry point', () => {
   describe('logging integration', () => {
     const loggingTestDir = join(tmpdir(), 'persistent-mode-logging-test-' + Date.now());
     const loggingProjectRoot = join(loggingTestDir, 'project');
-    const logsDir = join(loggingProjectRoot, '.claude', 'sisyphus', 'logs');
+    const logsDir = join(loggingProjectRoot, '.omt', 'logs');
 
     beforeAll(async () => {
-      await mkdir(join(loggingProjectRoot, '.claude', 'sisyphus'), { recursive: true });
+      await mkdir(join(loggingProjectRoot, '.omt'), { recursive: true });
       await mkdir(join(loggingProjectRoot, '.git'), { recursive: true });
     });
 

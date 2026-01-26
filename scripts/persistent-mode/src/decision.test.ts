@@ -6,8 +6,8 @@ import { tmpdir } from 'os';
 describe('makeDecision', () => {
   const testDir = join(tmpdir(), 'persistent-mode-decision-test-' + Date.now());
   const projectRoot = join(testDir, 'project');
-  const sisyphusDir = join(projectRoot, '.claude', 'sisyphus');
-  const stateDir = join(sisyphusDir, 'state');
+  const omtDir = join(projectRoot, '.omt');
+  const stateDir = join(omtDir, 'state');
 
   beforeAll(async () => {
     await mkdir(stateDir, { recursive: true });
@@ -19,7 +19,7 @@ describe('makeDecision', () => {
 
   beforeEach(async () => {
     // Clean up state files between tests
-    await rm(sisyphusDir, { recursive: true, force: true });
+    await rm(omtDir, { recursive: true, force: true });
     await mkdir(stateDir, { recursive: true });
   });
 
@@ -58,7 +58,7 @@ describe('makeDecision', () => {
         completion_promise: 'DONE',
         prompt: 'Test task',
       };
-      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+      await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
 
       const context = createContext();
 
@@ -78,7 +78,7 @@ describe('makeDecision', () => {
         completion_promise: 'DONE',
         prompt: 'Test task',
       };
-      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+      await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
 
       const context = createContext();
 
@@ -86,7 +86,7 @@ describe('makeDecision', () => {
 
       // Read state file and check iteration was incremented
       const { readFileSync } = await import('fs');
-      const updatedState = JSON.parse(readFileSync(join(sisyphusDir, 'ralph-state-test-session.json'), 'utf8'));
+      const updatedState = JSON.parse(readFileSync(join(omtDir, 'ralph-state-test-session.json'), 'utf8'));
       expect(updatedState.iteration).toBe(4);
     });
 
@@ -98,7 +98,7 @@ describe('makeDecision', () => {
         completion_promise: 'DONE',
         prompt: 'Test task',
       };
-      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+      await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
 
       const context = createContext();
 
@@ -115,14 +115,14 @@ describe('makeDecision', () => {
         completion_promise: 'DONE',
         prompt: 'Test task',
       };
-      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+      await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
 
       const context = createContext();
 
       makeDecision(context);
 
       const { existsSync } = await import('fs');
-      expect(existsSync(join(sisyphusDir, 'ralph-state-test-session.json'))).toBe(false);
+      expect(existsSync(join(omtDir, 'ralph-state-test-session.json'))).toBe(false);
     });
 
     it('should allow stop when oracle approval is detected in transcript', async () => {
@@ -133,7 +133,7 @@ describe('makeDecision', () => {
         completion_promise: 'DONE',
         prompt: 'Test task',
       };
-      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+      await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
 
       // Create transcript with oracle approval
       const transcriptPath = join(testDir, 'transcript.jsonl');
@@ -154,7 +154,7 @@ describe('makeDecision', () => {
         completion_promise: 'DONE',
         prompt: 'Test task',
       };
-      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+      await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
 
       const transcriptPath = join(testDir, 'transcript.jsonl');
       await writeFile(transcriptPath, '<oracle-approved>VERIFIED_COMPLETE</oracle-approved>');
@@ -164,7 +164,7 @@ describe('makeDecision', () => {
       makeDecision(context);
 
       const { existsSync } = await import('fs');
-      expect(existsSync(join(sisyphusDir, 'ralph-state-test-session.json'))).toBe(false);
+      expect(existsSync(join(omtDir, 'ralph-state-test-session.json'))).toBe(false);
     });
 
     it('should include previous oracle feedback in continuation message', async () => {
@@ -176,7 +176,7 @@ describe('makeDecision', () => {
         prompt: 'Test task',
         oracle_feedback: ['Missing unit tests', 'Code not refactored'],
       };
-      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+      await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
 
       const context = createContext();
 
@@ -197,7 +197,7 @@ describe('makeDecision', () => {
         prompt: 'Test task',
         oracle_feedback: [],
       };
-      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+      await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
 
       // Create transcript with oracle rejection
       const transcriptPath = join(testDir, 'rejection-transcript.jsonl');
@@ -209,7 +209,7 @@ describe('makeDecision', () => {
 
       // Check that feedback was captured
       const { readFileSync } = await import('fs');
-      const updatedState = JSON.parse(readFileSync(join(sisyphusDir, 'ralph-state-test-session.json'), 'utf8'));
+      const updatedState = JSON.parse(readFileSync(join(omtDir, 'ralph-state-test-session.json'), 'utf8'));
       expect(updatedState.oracle_feedback).toContain('Tests are failing');
     });
   });
@@ -274,7 +274,7 @@ describe('makeDecision', () => {
   describe('priority ordering', () => {
     it('should check ralph before baseline todos', async () => {
       // Ralph active with incomplete todos
-      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify({
+      await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify({
         active: true,
         iteration: 1,
         max_iterations: 10,
