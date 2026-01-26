@@ -93,21 +93,43 @@ export function makeDecision(context: DecisionContext): HookOutput {
   // Priority 1: Ralph Loop with Oracle Verification
   const ralphState = readRalphState(projectRoot, sessionId);
   if (ralphState && ralphState.active) {
-    // Check for oracle approval -> clean up and allow stop
-    if (transcript.hasOracleApproval) {
-      cleanupRalphState(projectRoot, sessionId);
-      cleanupBlockCountFiles(stateDir, attemptId);
-      return formatContinueOutput();
-    }
-
-    // Check max iterations
+    // 1. Max iteration check FIRST (escape hatch, regardless of tasks)
     if (ralphState.iteration >= ralphState.max_iterations) {
       cleanupRalphState(projectRoot, sessionId);
       cleanupBlockCountFiles(stateDir, attemptId);
       return formatContinueOutput();
     }
 
-    // No oracle approval - increment iteration and block
+    // 2. Tasks incomplete check SECOND (before Oracle check)
+    if (incompleteTodoCount > 0) {
+      const newIteration = ralphState.iteration + 1;
+      const oracleFeedback = ralphState.oracle_feedback || [];
+
+      const updatedState: RalphState = {
+        ...ralphState,
+        iteration: newIteration,
+        oracle_feedback: oracleFeedback
+      };
+      updateRalphState(projectRoot, sessionId, updatedState);
+
+      const message = buildRalphContinuationMessage(
+        newIteration,
+        ralphState.max_iterations,
+        ralphState.prompt,
+        ralphState.completion_promise || 'DONE',
+        oracleFeedback
+      );
+      return formatBlockOutput(message);
+    }
+
+    // 3. Tasks complete + Oracle approved -> pass
+    if (transcript.hasOracleApproval) {
+      cleanupRalphState(projectRoot, sessionId);
+      cleanupBlockCountFiles(stateDir, attemptId);
+      return formatContinueOutput();
+    }
+
+    // 4. Tasks complete + Oracle not approved/rejected -> block (iteration++)
     const newIteration = ralphState.iteration + 1;
     const oracleFeedback = ralphState.oracle_feedback || [];
 

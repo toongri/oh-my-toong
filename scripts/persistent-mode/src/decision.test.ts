@@ -212,6 +212,138 @@ describe('makeDecision', () => {
       const updatedState = JSON.parse(readFileSync(join(omtDir, 'ralph-state-test-session.json'), 'utf8'));
       expect(updatedState.oracle_feedback).toContain('Tests are failing');
     });
+
+    describe('tasks completion check before Oracle approval', () => {
+      it('should block when tasks incomplete even if oracle approval present', async () => {
+        const ralphState = {
+          active: true,
+          iteration: 1,
+          max_iterations: 10,
+          completion_promise: 'DONE',
+          prompt: 'Test task',
+        };
+        await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+
+        // Create transcript with oracle approval
+        const transcriptPath = join(testDir, 'oracle-approved-transcript.jsonl');
+        await writeFile(transcriptPath, '<oracle-approved>VERIFIED_COMPLETE</oracle-approved>');
+
+        // But tasks are incomplete
+        const context = createContext({ transcriptPath, incompleteTodoCount: 3 });
+
+        const result = makeDecision(context);
+
+        // Should block because tasks incomplete, even though Oracle approved
+        expect(result.decision).toBe('block');
+        expect(result.reason).toContain('<ralph-loop-continuation>');
+      });
+
+      it('should increment iteration when blocking due to incomplete tasks', async () => {
+        const ralphState = {
+          active: true,
+          iteration: 2,
+          max_iterations: 10,
+          completion_promise: 'DONE',
+          prompt: 'Test task',
+        };
+        await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+
+        // Tasks incomplete, no oracle approval
+        const context = createContext({ incompleteTodoCount: 5 });
+
+        makeDecision(context);
+
+        const { readFileSync } = await import('fs');
+        const updatedState = JSON.parse(readFileSync(join(omtDir, 'ralph-state-test-session.json'), 'utf8'));
+        expect(updatedState.iteration).toBe(3);
+      });
+
+      it('should allow stop when max iterations reached even with incomplete tasks', async () => {
+        const ralphState = {
+          active: true,
+          iteration: 10, // At max
+          max_iterations: 10,
+          completion_promise: 'DONE',
+          prompt: 'Test task',
+        };
+        await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+
+        // Tasks incomplete, but max iterations reached
+        const context = createContext({ incompleteTodoCount: 5 });
+
+        const result = makeDecision(context);
+
+        // Should pass because max iterations is escape hatch regardless of tasks
+        expect(result).toEqual({ continue: true });
+      });
+
+      it('should only check Oracle approval after tasks are complete', async () => {
+        const ralphState = {
+          active: true,
+          iteration: 3,
+          max_iterations: 10,
+          completion_promise: 'DONE',
+          prompt: 'Test task',
+        };
+        await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+
+        // Oracle approved AND tasks complete
+        const transcriptPath = join(testDir, 'tasks-complete-oracle-approved.jsonl');
+        await writeFile(transcriptPath, '<oracle-approved>VERIFIED_COMPLETE</oracle-approved>');
+
+        const context = createContext({ transcriptPath, incompleteTodoCount: 0 });
+
+        const result = makeDecision(context);
+
+        // Should pass because tasks complete AND oracle approved
+        expect(result).toEqual({ continue: true });
+      });
+
+      it('should block when tasks complete but Oracle not approved', async () => {
+        const ralphState = {
+          active: true,
+          iteration: 3,
+          max_iterations: 10,
+          completion_promise: 'DONE',
+          prompt: 'Test task',
+        };
+        await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+
+        // Tasks complete but no oracle approval
+        const context = createContext({ incompleteTodoCount: 0 });
+
+        const result = makeDecision(context);
+
+        // Should block because Oracle hasn't approved yet
+        expect(result.decision).toBe('block');
+        expect(result.reason).toContain('<ralph-loop-continuation>');
+      });
+
+      it('should capture Oracle rejection feedback when tasks complete but Oracle rejected', async () => {
+        const ralphState = {
+          active: true,
+          iteration: 3,
+          max_iterations: 10,
+          completion_promise: 'DONE',
+          prompt: 'Test task',
+          oracle_feedback: [],
+        };
+        await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+
+        // Tasks complete but Oracle rejected
+        const transcriptPath = join(testDir, 'oracle-rejected-transcript.jsonl');
+        await writeFile(transcriptPath, 'Oracle rejected because: issue: Code needs cleanup');
+
+        const context = createContext({ transcriptPath, incompleteTodoCount: 0 });
+
+        makeDecision(context);
+
+        const { readFileSync } = await import('fs');
+        const updatedState = JSON.parse(readFileSync(join(omtDir, 'ralph-state-test-session.json'), 'utf8'));
+        expect(updatedState.oracle_feedback).toContain('Code needs cleanup');
+        expect(updatedState.iteration).toBe(4);
+      });
+    });
   });
 
   describe('Priority 2: Baseline todo-continuation', () => {

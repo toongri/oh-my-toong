@@ -323,12 +323,30 @@ function makeDecision(context) {
   const transcript = analyzeTranscript(transcriptPath);
   const ralphState = readRalphState(projectRoot, sessionId);
   if (ralphState && ralphState.active) {
-    if (transcript.hasOracleApproval) {
+    if (ralphState.iteration >= ralphState.max_iterations) {
       cleanupRalphState(projectRoot, sessionId);
       cleanupBlockCountFiles(stateDir, attemptId);
       return formatContinueOutput();
     }
-    if (ralphState.iteration >= ralphState.max_iterations) {
+    if (incompleteTodoCount > 0) {
+      const newIteration2 = ralphState.iteration + 1;
+      const oracleFeedback2 = ralphState.oracle_feedback || [];
+      const updatedState2 = {
+        ...ralphState,
+        iteration: newIteration2,
+        oracle_feedback: oracleFeedback2
+      };
+      updateRalphState(projectRoot, sessionId, updatedState2);
+      const message2 = buildRalphContinuationMessage(
+        newIteration2,
+        ralphState.max_iterations,
+        ralphState.prompt,
+        ralphState.completion_promise || "DONE",
+        oracleFeedback2
+      );
+      return formatBlockOutput(message2);
+    }
+    if (transcript.hasOracleApproval) {
       cleanupRalphState(projectRoot, sessionId);
       cleanupBlockCountFiles(stateDir, attemptId);
       return formatContinueOutput();
