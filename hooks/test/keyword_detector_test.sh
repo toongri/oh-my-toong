@@ -15,7 +15,7 @@ CURRENT_TEST=""
 
 setup_test_env() {
     TEST_TMP_DIR=$(mktemp -d)
-    mkdir -p "$TEST_TMP_DIR/.claude/sisyphus"
+    mkdir -p "$TEST_TMP_DIR/.omt"
     mkdir -p "$TEST_TMP_DIR/.git"
 
     # Store original HOME
@@ -111,10 +111,10 @@ test_ralph_keyword_creates_session_specific_state_file() {
     assert_output_contains "$output" "RALPH LOOP ACTIVATED" "Should activate ralph loop" || return 1
 
     # Verify session-specific state file was created
-    assert_file_exists "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-test-session-123.json" "Session-specific ralph state file should exist" || return 1
+    assert_file_exists "$TEST_TMP_DIR/.omt/ralph-state-test-session-123.json" "Session-specific ralph state file should exist" || return 1
 
     # Verify old non-session file was NOT created
-    assert_file_not_exists "$TEST_TMP_DIR/.claude/sisyphus/ralph-state.json" "Non-session ralph state file should NOT exist" || return 1
+    assert_file_not_exists "$TEST_TMP_DIR/.omt/ralph-state.json" "Non-session ralph state file should NOT exist" || return 1
 }
 
 test_ralph_keyword_uses_default_when_no_session_id() {
@@ -129,7 +129,7 @@ test_ralph_keyword_uses_default_when_no_session_id() {
     assert_output_contains "$output" "RALPH LOOP ACTIVATED" "Should activate ralph loop" || return 1
 
     # Verify default session state file was created
-    assert_file_exists "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" "Default ralph state file should exist" || return 1
+    assert_file_exists "$TEST_TMP_DIR/.omt/ralph-state-default.json" "Default ralph state file should exist" || return 1
 }
 
 test_ralph_verification_uses_session_id() {

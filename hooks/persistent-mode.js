@@ -25,14 +25,14 @@ function parseInput(raw) {
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "fs";
 import { dirname } from "path";
 function getProjectRoot(directory) {
-  let dir = directory.replace(/\/.claude\/sisyphus$/, "").replace(/\/.claude$/, "");
+  let dir = directory.replace(/\/.omt$/, "").replace(/\/.claude$/, "");
   while (dir !== "/" && dir !== "." && dir) {
     if (existsSync(`${dir}/.git`) || existsSync(`${dir}/CLAUDE.md`) || existsSync(`${dir}/package.json`)) {
       return dir;
     }
     dir = dirname(dir);
   }
-  return directory.replace(/\/.claude\/sisyphus$/, "");
+  return directory.replace(/\/.omt$/, "");
 }
 function ensureDir(path) {
   if (!existsSync(path)) {
@@ -71,7 +71,7 @@ function generateAttemptId(sessionId, directory) {
 // src/state.ts
 var MAX_TODO_CONTINUATION_ATTEMPTS = 5;
 function readRalphState(projectRoot, sessionId) {
-  const path = `${projectRoot}/.claude/sisyphus/ralph-state-${sessionId}.json`;
+  const path = `${projectRoot}/.omt/ralph-state-${sessionId}.json`;
   const content = readFileOrNull(path);
   if (!content) return null;
   try {
@@ -82,11 +82,11 @@ function readRalphState(projectRoot, sessionId) {
   }
 }
 function updateRalphState(projectRoot, sessionId, state) {
-  const path = `${projectRoot}/.claude/sisyphus/ralph-state-${sessionId}.json`;
+  const path = `${projectRoot}/.omt/ralph-state-${sessionId}.json`;
   writeFileSafe(path, JSON.stringify(state, null, 2));
 }
 function cleanupRalphState(projectRoot, sessionId) {
-  deleteFile(`${projectRoot}/.claude/sisyphus/ralph-state-${sessionId}.json`);
+  deleteFile(`${projectRoot}/.omt/ralph-state-${sessionId}.json`);
 }
 function getAttemptCount(stateDir, attemptId) {
   const content = readFileOrNull(`${stateDir}/todo-attempts-${attemptId}`);
@@ -191,7 +191,7 @@ function initLogger(component, projectRoot, sessionId) {
   }
   componentName = component;
   const sanitizedSession = sanitizeSessionId(sessionId || "default");
-  const logDir = join(projectRoot, ".claude", "sisyphus", "logs");
+  const logDir = join(projectRoot, ".omt", "logs");
   logFile = join(logDir, `${component}-${sanitizedSession}.log`);
   initialized = true;
 }
@@ -329,7 +329,7 @@ Do NOT stop until all tasks are completed.
 }
 function makeDecision(context) {
   const { projectRoot, sessionId, transcriptPath, incompleteTodoCount } = context;
-  const stateDir = `${projectRoot}/.claude/sisyphus/state`;
+  const stateDir = `${projectRoot}/.omt/state`;
   const attemptId = generateAttemptId(sessionId, projectRoot);
   ensureDir(stateDir);
   const transcript = analyzeTranscript(transcriptPath);

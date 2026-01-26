@@ -42,7 +42,7 @@ async function readJsonFile<T>(path: string): Promise<T | null> {
  */
 async function findStateFile<T>(cwd: string, filename: string): Promise<T | null> {
   // Project-local only (with stale check)
-  const localPath = join(cwd, '.claude', 'sisyphus', filename);
+  const localPath = join(cwd, '.omt', filename);
   if (!await isStateFileStale(localPath)) {
     return readJsonFile<T>(localPath);
   }

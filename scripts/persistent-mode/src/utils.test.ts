@@ -52,12 +52,12 @@ describe('getProjectRoot', () => {
     expect(result).toBe(npmProject);
   });
 
-  it('should strip .claude/sisyphus suffix', async () => {
+  it('should strip .omt suffix', async () => {
     const project = join(testDir, 'nested-project');
     await mkdir(join(project, '.git'), { recursive: true });
-    await mkdir(join(project, '.claude', 'sisyphus'), { recursive: true });
+    await mkdir(join(project, '.omt'), { recursive: true });
 
-    const result = getProjectRoot(join(project, '.claude', 'sisyphus'));
+    const result = getProjectRoot(join(project, '.omt'));
 
     expect(result).toBe(project);
   });
@@ -84,7 +84,7 @@ describe('getProjectRoot', () => {
   });
 
   it('should return stripped directory as fallback when no markers found', () => {
-    const noMarkersPath = '/tmp/no-markers/deep/path/.claude/sisyphus';
+    const noMarkersPath = '/tmp/no-markers/deep/path/.omt';
 
     const result = getProjectRoot(noMarkersPath);
 

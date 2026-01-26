@@ -116,7 +116,7 @@ function log(level: LogLevel, message: string): void {
  * Initialize logging for a component
  *
  * @param component - Name of the component (used in log messages and filename)
- * @param projectRoot - Project root directory (where .claude/sisyphus/logs will be created)
+ * @param projectRoot - Project root directory (where .omt/logs will be created)
  * @param sessionId - Optional session ID (defaults to 'default')
  */
 export function initLogger(component: string, projectRoot: string, sessionId?: string): void {
@@ -129,8 +129,8 @@ export function initLogger(component: string, projectRoot: string, sessionId?: s
   componentName = component;
   const sanitizedSession = sanitizeSessionId(sessionId || 'default');
 
-  // Set log file path: .claude/sisyphus/logs/{component}-{sessionId}.log
-  const logDir = join(projectRoot, '.claude', 'sisyphus', 'logs');
+  // Set log file path: .omt/logs/{component}-{sessionId}.log
+  const logDir = join(projectRoot, '.omt', 'logs');
   logFile = join(logDir, `${component}-${sanitizedSession}.log`);
 
   initialized = true;

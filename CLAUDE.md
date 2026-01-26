@@ -49,11 +49,11 @@ oh-my-toong/
 
 **Ralph Loop**:
 - Iterative completion enforcement with oracle verification
-- State file at `.claude/sisyphus/ralph-state.json`
+- State file at `.omt/ralph-state.json`
 - Cancel with `/cancel-ralph`
 
 **Planning → Execution Flow**:
-1. `/prometheus <task>` - Creates work plan in `.claude/sisyphus/plans/*.md`
+1. `/prometheus <task>` - Creates work plan in `.omt/plans/*.md`
 2. `/sisyphus` - Orchestrates plan execution via subagents
 3. `sisyphus-junior` - Executes individual tasks with strict todo discipline
 
@@ -85,9 +85,6 @@ Read("skills/prometheus/SKILL.md")  // Wrong
 | Task planning | prometheus |
 | Code implementation | sisyphus-junior |
 | Plan review | momus |
-
-### Work Plan Location
-Plans are stored in `.claude/sisyphus/plans/{name}.md` - these are READ-ONLY for executors.
 
 ## Language Conventions
 

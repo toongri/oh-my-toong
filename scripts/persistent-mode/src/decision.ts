@@ -82,7 +82,7 @@ Do NOT stop until all tasks are completed.
 
 export function makeDecision(context: DecisionContext): HookOutput {
   const { projectRoot, sessionId, transcriptPath, incompleteTodoCount } = context;
-  const stateDir = `${projectRoot}/.claude/sisyphus/state`;
+  const stateDir = `${projectRoot}/.omt/state`;
   const attemptId = generateAttemptId(sessionId, projectRoot);
 
   // Ensure state directory exists

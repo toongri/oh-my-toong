@@ -79,8 +79,8 @@ Or manually:
 | Feature | Source |
 |---------|--------|
 | Context % | stdin JSON from Claude Code |
-| Ralph status | `.claude/sisyphus/ralph-state.json` (includes oracle_feedback) |
-| Todos | `.claude/sisyphus/todos.json` + `~/.claude/todos/*.json` |
+| Ralph status | `.omt/ralph-state.json` (includes oracle_feedback) |
+| Todos | `.omt/todos.json` + `~/.claude/todos/*.json` |
 | Agents | `transcript.jsonl` parsing |
 | Skills | `transcript.jsonl` parsing |
 
@@ -88,7 +88,7 @@ Or manually:
 
 The HUD checks for state files in priority order:
 
-1. `$CWD/.claude/sisyphus/*.json` (project-local)
+1. `$CWD/.omt/*.json` (project-local)
 2. `~/.claude/*.json` (global fallback)
 
 ## Requirements

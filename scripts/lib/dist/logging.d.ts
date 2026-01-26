@@ -14,7 +14,7 @@ export declare enum LogLevel {
  * Initialize logging for a component
  *
  * @param component - Name of the component (used in log messages and filename)
- * @param projectRoot - Project root directory (where .claude/sisyphus/logs will be created)
+ * @param projectRoot - Project root directory (where .omt/logs will be created)
  * @param sessionId - Optional session ID (defaults to 'default')
  */
 export declare function initLogger(component: string, projectRoot: string, sessionId?: string): void;

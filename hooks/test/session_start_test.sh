@@ -15,7 +15,7 @@ CURRENT_TEST=""
 
 setup_test_env() {
     TEST_TMP_DIR=$(mktemp -d)
-    mkdir -p "$TEST_TMP_DIR/.claude/sisyphus"
+    mkdir -p "$TEST_TMP_DIR/.omt"
     mkdir -p "$TEST_TMP_DIR/.git"
 
     # Store original HOME
@@ -101,7 +101,7 @@ test_session_start_extracts_session_id() {
 
 test_session_start_reads_session_specific_ralph_state() {
     # Create session-specific ralph state file
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-test-session-abc.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ralph-state-test-session-abc.json" << 'EOF'
 {
   "active": true,
   "iteration": 3,
@@ -121,7 +121,7 @@ EOF
 
 test_session_start_ignores_other_sessions_ralph_state() {
     # Create ralph state file for DIFFERENT session
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-other-session.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ralph-state-other-session.json" << 'EOF'
 {
   "active": true,
   "iteration": 5,
@@ -141,7 +141,7 @@ EOF
 
 test_session_start_uses_default_when_no_session_id() {
     # Create default ralph state file
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ralph-state-default.json" << 'EOF'
 {
   "active": true,
   "iteration": 2,
@@ -171,7 +171,7 @@ test_session_start_no_verification_file_references() {
 
 test_session_start_reads_oracle_feedback_from_ralph_state() {
     # Create ralph state with oracle_feedback
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-test-session-feedback.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ralph-state-test-session-feedback.json" << 'EOF'
 {
   "active": true,
   "iteration": 3,
@@ -202,7 +202,7 @@ EOF
 
 test_session_start_reads_session_specific_ultrawork_state() {
     # Create session-specific ultrawork state file
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-test-session-xyz.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ultrawork-state-test-session-xyz.json" << 'EOF'
 {
   "active": true,
   "started_at": "2024-01-01T00:00:00",
@@ -222,7 +222,7 @@ EOF
 
 test_session_start_ignores_other_sessions_ultrawork_state() {
     # Create ultrawork state file for DIFFERENT session
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-other-session.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ultrawork-state-other-session.json" << 'EOF'
 {
   "active": true,
   "started_at": "2024-01-01T00:00:00",
@@ -242,7 +242,7 @@ EOF
 
 test_session_start_uses_default_session_for_ultrawork() {
     # Create default ultrawork state file
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ultrawork-state-default.json" << 'EOF'
 {
   "active": true,
   "started_at": "2024-01-01T00:00:00",

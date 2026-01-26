@@ -16,7 +16,7 @@ CURRENT_TEST=""
 
 setup_test_env() {
     TEST_TMP_DIR=$(mktemp -d)
-    mkdir -p "$TEST_TMP_DIR/.claude/sisyphus/logs"
+    mkdir -p "$TEST_TMP_DIR/.omt/logs"
     mkdir -p "$TEST_TMP_DIR/.git"
 
     # Store original HOME and env vars
@@ -171,7 +171,7 @@ test_logging_enabled_by_default() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_info "test message"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_contains "$log_file" "test message" "Logging should be enabled by default" || return 1
 }
 
@@ -183,7 +183,7 @@ test_logging_can_be_disabled() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_info "should not appear"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_not_exists "$log_file" "Log file should not be created when disabled" || return 1
 }
 
@@ -195,7 +195,7 @@ test_logging_respects_enabled_flag() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_info "should appear"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_contains "$log_file" "should appear" "Logging should work when enabled" || return 1
 }
 
@@ -211,7 +211,7 @@ test_log_level_debug_is_0() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_debug "debug message"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_contains "$log_file" "debug message" "DEBUG level should log debug messages" || return 1
 }
 
@@ -224,7 +224,7 @@ test_log_level_info_is_1() {
     omt_log_debug "debug message"
     omt_log_info "info message"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_not_contains "$log_file" "debug message" "INFO level should not log debug" || return 1
     assert_file_contains "$log_file" "info message" "INFO level should log info" || return 1
 }
@@ -238,7 +238,7 @@ test_log_level_warn_is_2() {
     omt_log_info "info message"
     omt_log_warn "warn message"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_not_contains "$log_file" "info message" "WARN level should not log info" || return 1
     assert_file_contains "$log_file" "warn message" "WARN level should log warn" || return 1
 }
@@ -252,7 +252,7 @@ test_log_level_error_is_3() {
     omt_log_warn "warn message"
     omt_log_error "error message"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_not_contains "$log_file" "warn message" "ERROR level should not log warn" || return 1
     assert_file_contains "$log_file" "error message" "ERROR level should log error" || return 1
 }
@@ -266,7 +266,7 @@ test_default_log_level_is_info() {
     omt_log_debug "debug message"
     omt_log_info "info message"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_not_contains "$log_file" "debug message" "Default level should not log debug" || return 1
     assert_file_contains "$log_file" "info message" "Default level should log info" || return 1
 }
@@ -280,7 +280,7 @@ test_log_rotation_occurs_at_1mb() {
     source "$LOGGING_LIB"
 
     omt_log_init "test-hook" "$TEST_TMP_DIR"
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
 
     # Create a log file just over 1MB
     dd if=/dev/zero bs=1024 count=1025 2>/dev/null | tr '\0' 'x' > "$log_file"
@@ -297,7 +297,7 @@ test_log_rotation_keeps_3_files() {
     source "$LOGGING_LIB"
 
     omt_log_init "test-hook" "$TEST_TMP_DIR"
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
 
     # Create initial rotated files
     echo "backup3" > "${log_file}.3"
@@ -324,10 +324,10 @@ test_omt_log_init_creates_log_directory() {
     # shellcheck disable=SC1090
     source "$LOGGING_LIB"
 
-    rm -rf "$TEST_TMP_DIR/.claude/sisyphus/logs"
+    rm -rf "$TEST_TMP_DIR/.omt/logs"
     omt_log_init "test-hook" "$TEST_TMP_DIR"
 
-    if [[ -d "$TEST_TMP_DIR/.claude/sisyphus/logs" ]]; then
+    if [[ -d "$TEST_TMP_DIR/.omt/logs" ]]; then
         return 0
     else
         echo "ASSERTION FAILED: omt_log_init should create logs directory"
@@ -342,7 +342,7 @@ test_omt_log_init_sets_hook_name() {
     omt_log_init "my-custom-hook" "$TEST_TMP_DIR"
     omt_log_info "test"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/my-custom-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/my-custom-hook.log"
     assert_file_exists "$log_file" "Log file should use hook name" || return 1
 }
 
@@ -357,7 +357,7 @@ test_omt_log_start_logs_hook_start() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_start
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_contains "$log_file" "START" "omt_log_start should log START" || return 1
 }
 
@@ -368,7 +368,7 @@ test_omt_log_end_logs_hook_end() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_end
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_contains "$log_file" "END" "omt_log_end should log END" || return 1
 }
 
@@ -383,7 +383,7 @@ test_omt_log_decision_logs_decision() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_decision "continue" "No blocking conditions found"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_contains "$log_file" "DECISION" "Should log DECISION tag" || return 1
     assert_file_contains "$log_file" "continue" "Should log decision value" || return 1
     assert_file_contains "$log_file" "No blocking conditions found" "Should log decision reason" || return 1
@@ -400,7 +400,7 @@ test_omt_log_json_logs_json_data() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_json "input" '{"sessionId": "abc123", "cwd": "/test"}'
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_contains "$log_file" "JSON" "Should log JSON tag" || return 1
     assert_file_contains "$log_file" "input" "Should log JSON label" || return 1
     assert_file_contains "$log_file" "sessionId" "Should log JSON content" || return 1
@@ -417,8 +417,8 @@ test_log_file_location_uses_project_root() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_info "test message"
 
-    local expected_log="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
-    assert_file_exists "$expected_log" "Log should be at PROJECT_ROOT/.claude/sisyphus/logs/" || return 1
+    local expected_log="$TEST_TMP_DIR/.omt/logs/test-hook.log"
+    assert_file_exists "$expected_log" "Log should be at PROJECT_ROOT/.omt/logs/" || return 1
 }
 
 # =============================================================================
@@ -459,9 +459,9 @@ test_get_project_root_strips_claude_sisyphus_path() {
     source "$LOGGING_LIB"
 
     local result
-    result=$(omt_get_project_root "$TEST_TMP_DIR/.claude/sisyphus")
+    result=$(omt_get_project_root "$TEST_TMP_DIR/.omt")
 
-    assert_equals "$TEST_TMP_DIR" "$result" "Should strip .claude/sisyphus from path" || return 1
+    assert_equals "$TEST_TMP_DIR" "$result" "Should strip .omt from path" || return 1
 }
 
 # =============================================================================
@@ -475,7 +475,7 @@ test_log_format_includes_timestamp() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_info "test message"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     # Check for ISO-ish timestamp format
     if grep -qE '[0-9]{4}-[0-9]{2}-[0-9]{2}' "$log_file"; then
         return 0
@@ -492,7 +492,7 @@ test_log_format_includes_level() {
     omt_log_init "test-hook" "$TEST_TMP_DIR"
     omt_log_info "test message"
 
-    local log_file="$TEST_TMP_DIR/.claude/sisyphus/logs/test-hook.log"
+    local log_file="$TEST_TMP_DIR/.omt/logs/test-hook.log"
     assert_file_contains "$log_file" "INFO" "Log should include level" || return 1
 }
 

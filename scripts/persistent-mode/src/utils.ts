@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from '
 import { dirname } from 'path';
 
 export function getProjectRoot(directory: string): string {
-  // Strip .claude/sisyphus suffix if present
-  let dir = directory.replace(/\/.claude\/sisyphus$/, '').replace(/\/.claude$/, '');
+  // Strip .omt suffix if present
+  let dir = directory.replace(/\/.omt$/, '').replace(/\/.claude$/, '');
 
   // Look for project root markers
   while (dir !== '/' && dir !== '.' && dir) {
@@ -14,7 +14,7 @@ export function getProjectRoot(directory: string): string {
   }
 
   // Fallback
-  return directory.replace(/\/.claude\/sisyphus$/, '');
+  return directory.replace(/\/.omt$/, '');
 }
 
 export function ensureDir(path: string): void {

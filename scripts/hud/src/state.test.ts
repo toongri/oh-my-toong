@@ -6,11 +6,10 @@ import { tmpdir, homedir } from 'os';
 describe('state readers', () => {
   const testDir = join(tmpdir(), 'hud-state-test-' + Date.now());
   const projectDir = join(testDir, 'project');
-  const claudeDir = join(projectDir, '.claude');
-  const sisyphusDir = join(claudeDir, 'sisyphus');
+  const omtDir = join(projectDir, '.omt');
 
   beforeAll(async () => {
-    await mkdir(sisyphusDir, { recursive: true });
+    await mkdir(omtDir, { recursive: true });
   });
 
   afterAll(async () => {
@@ -18,7 +17,7 @@ describe('state readers', () => {
   });
 
   describe('readRalphState', () => {
-    it('should read session-specific ralph state from project-local .claude/sisyphus/', async () => {
+    it('should read session-specific ralph state from project-local .omt/', async () => {
       const state = {
         active: true,
         iteration: 2,
@@ -29,7 +28,7 @@ describe('state readers', () => {
               };
 
       // Session-specific file: ralph-state-test-session.json
-      await writeFile(join(sisyphusDir, 'ralph-state-test-session.json'), JSON.stringify(state));
+      await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(state));
 
       const result = await readRalphState(projectDir, 'test-session');
 
@@ -50,7 +49,7 @@ describe('state readers', () => {
               };
 
       // Default session file: ralph-state-default.json
-      await writeFile(join(sisyphusDir, 'ralph-state-default.json'), JSON.stringify(state));
+      await writeFile(join(omtDir, 'ralph-state-default.json'), JSON.stringify(state));
 
       const result = await readRalphState(projectDir);
 
@@ -78,7 +77,7 @@ describe('state readers', () => {
               };
 
       // Create ralph state for a different session
-      await writeFile(join(sisyphusDir, 'ralph-state-other-session.json'), JSON.stringify(state));
+      await writeFile(join(omtDir, 'ralph-state-other-session.json'), JSON.stringify(state));
 
       // Try to read with a different session ID
       const result = await readRalphState(projectDir, 'my-session');

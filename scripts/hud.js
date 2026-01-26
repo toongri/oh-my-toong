@@ -80,7 +80,7 @@ async function readJsonFile(path) {
   }
 }
 async function findStateFile(cwd, filename) {
-  const localPath = join2(cwd, ".claude", "sisyphus", filename);
+  const localPath = join2(cwd, ".omt", filename);
   if (!await isStateFileStale(localPath)) {
     return readJsonFile(localPath);
   }
@@ -214,7 +214,7 @@ function initLogger(component, projectRoot, sessionId) {
   }
   componentName = component;
   const sanitizedSession = sanitizeSessionId(sessionId || "default");
-  const logDir = join3(projectRoot, ".claude", "sisyphus", "logs");
+  const logDir = join3(projectRoot, ".omt", "logs");
   logFile = join3(logDir, `${component}-${sanitizedSession}.log`);
   initialized = true;
 }

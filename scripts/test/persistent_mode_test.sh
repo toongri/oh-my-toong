@@ -18,7 +18,7 @@ TEST_TMP_DIR=""
 
 setup_test_env() {
     TEST_TMP_DIR=$(mktemp -d)
-    mkdir -p "$TEST_TMP_DIR/.claude/sisyphus"
+    mkdir -p "$TEST_TMP_DIR/.omt"
     mkdir -p "$TEST_TMP_DIR/.claude/sessions/test-session-123"
 }
 

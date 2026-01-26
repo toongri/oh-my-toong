@@ -15,7 +15,7 @@ CURRENT_TEST=""
 
 setup_test_env() {
     TEST_TMP_DIR=$(mktemp -d)
-    mkdir -p "$TEST_TMP_DIR/.claude/sisyphus"
+    mkdir -p "$TEST_TMP_DIR/.omt"
 
     # Store original HOME
     ORIGINAL_HOME="$HOME"
@@ -314,7 +314,7 @@ test_max_iteration_script_behavior() {
     mkdir -p "$TEST_TMP_DIR/.git"
 
     # Setup: Create ralph state at max iteration (session-specific with default session)
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ralph-state-default.json" << 'EOF'
 {
   "active": true,
   "iteration": 10,
@@ -325,7 +325,7 @@ test_max_iteration_script_behavior() {
 EOF
 
     # Create session-specific ultrawork state (no linked_to_ralph field)
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ultrawork-state-default.json" << 'EOF'
 {
   "active": true,
   "started_at": "2024-01-01T00:00:00",
@@ -352,14 +352,14 @@ EOF
     # Verify output is simplified continue:true JSON (common format)
     if echo "$output" | grep -q '"continue": true'; then
         # Also verify the state files were cleaned up (session-specific)
-        if [[ ! -f "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" ]] && \
-           [[ ! -f "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json" ]] && \
+        if [[ ! -f "$TEST_TMP_DIR/.omt/ralph-state-default.json" ]] && \
+           [[ ! -f "$TEST_TMP_DIR/.omt/ultrawork-state-default.json" ]] && \
            [[ ! -f "$HOME/.claude/ultrawork-state-default.json" ]]; then
             return 0
         else
             echo "ASSERTION FAILED: State files should be cleaned up after max iterations"
-            [[ -f "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" ]] && echo "  ralph-state-default.json still exists"
-            [[ -f "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json" ]] && echo "  local ultrawork-state-default.json still exists"
+            [[ -f "$TEST_TMP_DIR/.omt/ralph-state-default.json" ]] && echo "  ralph-state-default.json still exists"
+            [[ -f "$TEST_TMP_DIR/.omt/ultrawork-state-default.json" ]] && echo "  local ultrawork-state-default.json still exists"
             [[ -f "$HOME/.claude/ultrawork-state-default.json" ]] && echo "  global ultrawork-state-default.json still exists"
             return 1
         fi
@@ -379,7 +379,7 @@ test_session_specific_ralph_state_reading() {
     mkdir -p "$TEST_TMP_DIR/.git"
 
     # Create session-specific ralph state file
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-test-session-789.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ralph-state-test-session-789.json" << 'EOF'
 {
   "active": true,
   "iteration": 3,
@@ -408,7 +408,7 @@ test_session_specific_ralph_state_ignores_other_sessions() {
     mkdir -p "$TEST_TMP_DIR/.git"
 
     # Create ralph state file for DIFFERENT session
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-other-session.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ralph-state-other-session.json" << 'EOF'
 {
   "active": true,
   "iteration": 5,
@@ -541,7 +541,7 @@ test_detect_oracle_approval_with_transcript_file() {
     mkdir -p "$TEST_TMP_DIR/.git"
 
     # Create ralph state so we have an active loop
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ralph-state-default.json" << 'EOF'
 {
   "active": true,
   "iteration": 3,
@@ -631,7 +631,7 @@ test_iteration_increment_on_no_oracle_approval() {
     mkdir -p "$TEST_TMP_DIR/.git"
 
     # Create ralph state with iteration=3
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ralph-state-default.json" << 'EOF'
 {
   "active": true,
   "iteration": 3,
@@ -654,7 +654,7 @@ EOF
 
     # Check that iteration was incremented
     local new_iteration
-    new_iteration=$(jq -r '.iteration' "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" 2>/dev/null)
+    new_iteration=$(jq -r '.iteration' "$TEST_TMP_DIR/.omt/ralph-state-default.json" 2>/dev/null)
 
     if [[ "$new_iteration" == "4" ]]; then
         return 0
@@ -669,7 +669,7 @@ test_oracle_feedback_stored_on_rejection() {
     mkdir -p "$TEST_TMP_DIR/.git"
 
     # Create ralph state
-    cat > "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/.omt/ralph-state-default.json" << 'EOF'
 {
   "active": true,
   "iteration": 2,
@@ -692,7 +692,7 @@ EOF
 
     # Check that oracle_feedback has content
     local feedback_count
-    feedback_count=$(jq -r '.oracle_feedback | length' "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" 2>/dev/null)
+    feedback_count=$(jq -r '.oracle_feedback | length' "$TEST_TMP_DIR/.omt/ralph-state-default.json" 2>/dev/null)
 
     if [[ "$feedback_count" -gt 0 ]]; then
         return 0

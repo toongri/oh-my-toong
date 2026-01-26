@@ -16,7 +16,7 @@ setup_test_env() {
     TEST_TMP_DIR=$(mktemp -d)
     # Create .git directory so get_project_root() can find project root
     mkdir -p "$TEST_TMP_DIR/.git"
-    mkdir -p "$TEST_TMP_DIR/.claude/sisyphus"
+    mkdir -p "$TEST_TMP_DIR/.omt"
     # Set HOME to test dir for global state files
     export HOME_BACKUP="$HOME"
     export HOME="$TEST_TMP_DIR"
@@ -209,14 +209,14 @@ test_ralph_creates_ralph_state_json() {
     # When ralph keyword detected, should create ralph-state-default.json
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    assert_file_exists "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" "Should create ralph-state-default.json"
+    assert_file_exists "$TEST_TMP_DIR/.omt/ralph-state-default.json" "Should create ralph-state-default.json"
 }
 
 test_ralph_state_has_correct_structure() {
     # ralph-state-default.json should have the required fields
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json"
+    local state_file="$TEST_TMP_DIR/.omt/ralph-state-default.json"
 
     assert_json_field "$state_file" ".active" "true" "active should be true"
     assert_json_field "$state_file" ".iteration" "1" "iteration should be 1"
@@ -228,7 +228,7 @@ test_ralph_state_contains_prompt() {
     # ralph-state-default.json should contain the original prompt
     run_keyword_detector "ralph complete this task" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json"
+    local state_file="$TEST_TMP_DIR/.omt/ralph-state-default.json"
 
     # Check prompt is not empty
     local prompt=$(jq -r ".prompt" "$state_file" 2>/dev/null)
@@ -243,7 +243,7 @@ test_ralph_state_has_timestamp() {
     # ralph-state-default.json should have started_at timestamp
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json"
+    local state_file="$TEST_TMP_DIR/.omt/ralph-state-default.json"
 
     local timestamp=$(jq -r ".started_at" "$state_file" 2>/dev/null)
     if [[ -z "$timestamp" || "$timestamp" == "null" ]]; then
@@ -257,7 +257,7 @@ test_ralph_state_has_linked_ultrawork_true() {
     # ralph-state-default.json should have linked_ultrawork: true
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json"
+    local state_file="$TEST_TMP_DIR/.omt/ralph-state-default.json"
 
     assert_json_field "$state_file" ".linked_ultrawork" "true" "linked_ultrawork should be true"
 }
@@ -270,15 +270,15 @@ test_ultrawork_creates_session_specific_state_file() {
     # When ultrawork keyword detected, should create ultrawork-state-default.json (not ultrawork-state.json)
     run_keyword_detector "ultrawork complete this" "$TEST_TMP_DIR" > /dev/null
 
-    assert_file_exists "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json" "Should create ultrawork-state-default.json"
-    assert_file_not_exists "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state.json" "Should NOT create ultrawork-state.json (old format)"
+    assert_file_exists "$TEST_TMP_DIR/.omt/ultrawork-state-default.json" "Should create ultrawork-state-default.json"
+    assert_file_not_exists "$TEST_TMP_DIR/.omt/ultrawork-state.json" "Should NOT create ultrawork-state.json (old format)"
 }
 
 test_ultrawork_state_does_not_have_linked_to_ralph_field() {
     # Ultrawork state should NOT have linked_to_ralph field (removed)
     run_keyword_detector "ultrawork complete this" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json"
+    local state_file="$TEST_TMP_DIR/.omt/ultrawork-state-default.json"
 
     # linked_to_ralph field should not exist
     local linked=$(jq -r ".linked_to_ralph // \"missing\"" "$state_file" 2>/dev/null)
@@ -293,15 +293,15 @@ test_ralph_creates_session_specific_ultrawork_state() {
     # When ralph detected and ultrawork state doesn't exist, create session-specific file
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    assert_file_exists "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json" "Should create ultrawork-state-default.json"
-    assert_file_not_exists "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state.json" "Should NOT create ultrawork-state.json (old format)"
+    assert_file_exists "$TEST_TMP_DIR/.omt/ultrawork-state-default.json" "Should create ultrawork-state-default.json"
+    assert_file_not_exists "$TEST_TMP_DIR/.omt/ultrawork-state.json" "Should NOT create ultrawork-state.json (old format)"
 }
 
 test_ralph_ultrawork_state_no_linked_to_ralph_flag() {
     # Created ultrawork state should NOT have linked_to_ralph field (removed)
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json"
+    local state_file="$TEST_TMP_DIR/.omt/ultrawork-state-default.json"
 
     # linked_to_ralph field should not exist
     local linked=$(jq -r ".linked_to_ralph // \"missing\"" "$state_file" 2>/dev/null)
@@ -315,11 +315,11 @@ test_ralph_ultrawork_state_no_linked_to_ralph_flag() {
 test_ralph_does_not_overwrite_existing_ultrawork_state() {
     # When ultrawork-state-default.json already exists, ralph should NOT overwrite it
     local existing_state='{"active": true, "started_at": "2025-01-01T00:00:00", "original_prompt": "existing task"}'
-    echo "$existing_state" > "$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json"
+    echo "$existing_state" > "$TEST_TMP_DIR/.omt/ultrawork-state-default.json"
 
     run_keyword_detector "ralph complete this" "$TEST_TMP_DIR" > /dev/null
 
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json"
+    local state_file="$TEST_TMP_DIR/.omt/ultrawork-state-default.json"
 
     # Should preserve original content
     assert_json_field "$state_file" ".original_prompt" "existing task" "Should preserve existing ultrawork state"
@@ -349,10 +349,10 @@ test_ralph_before_ultrawork_in_detection_order() {
     run_keyword_detector "ralph ultrawork complete" "$TEST_TMP_DIR" > /dev/null
 
     # Should have ralph-state-default.json
-    assert_file_exists "$TEST_TMP_DIR/.claude/sisyphus/ralph-state-default.json" "ralph-state should exist"
+    assert_file_exists "$TEST_TMP_DIR/.omt/ralph-state-default.json" "ralph-state should exist"
 
     # ultrawork-state-default.json should be created (session-specific, no linked_to_ralph)
-    local state_file="$TEST_TMP_DIR/.claude/sisyphus/ultrawork-state-default.json"
+    local state_file="$TEST_TMP_DIR/.omt/ultrawork-state-default.json"
     assert_file_exists "$state_file" "ultrawork state should be created by ralph (session-specific)"
 }
 

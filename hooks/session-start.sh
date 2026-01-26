@@ -22,12 +22,12 @@ if [ -z "$SESSION_ID" ] || [ "$SESSION_ID" = "null" ]; then
   SESSION_ID="default"
 fi
 
-# Find project root by looking for markers and escaping .claude/sisyphus if inside
+# Find project root by looking for markers and escaping .omt if inside
 get_project_root() {
   local dir="$1"
 
-  # Strip .claude/sisyphus suffix if present (prevents nesting)
-  dir="${dir%/.claude/sisyphus}"
+  # Strip .omt suffix if present (prevents nesting)
+  dir="${dir%/.omt}"
   dir="${dir%/.claude}"
 
   # Look for project root markers
@@ -40,7 +40,7 @@ get_project_root() {
   done
 
   # Fallback: return the stripped directory
-  echo "${1%/.claude/sisyphus}"
+  echo "${1%/.omt}"
 }
 
 # Get project root
@@ -49,8 +49,8 @@ PROJECT_ROOT=$(get_project_root "$DIRECTORY")
 MESSAGES=""
 
 # Check for active ralph loop state (session-specific)
-if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" ]; then
-  RALPH_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null)
+if [ -f "$PROJECT_ROOT/.omt/ralph-state-${SESSION_ID}.json" ]; then
+  RALPH_STATE=$(cat "$PROJECT_ROOT/.omt/ralph-state-${SESSION_ID}.json" 2>/dev/null)
 
   if command -v jq &> /dev/null; then
     IS_ACTIVE=$(echo "$RALPH_STATE" | jq -r '.active // false' 2>/dev/null)
@@ -86,7 +86,7 @@ if [ -d "$TODOS_DIR" ]; then
 fi
 
 # Check for incomplete todos in project directory
-for todo_path in "$PROJECT_ROOT/.claude/sisyphus/todos.json" "$DIRECTORY/.claude/todos.json"; do
+for todo_path in "$PROJECT_ROOT/.omt/todos.json" "$DIRECTORY/.claude/todos.json"; do
   if [ -f "$todo_path" ]; then
     if command -v jq &> /dev/null; then
       COUNT=$(jq 'if type == "array" then [.[] | select(.status != "completed" and .status != "cancelled")] | length else 0 end' "$todo_path" 2>/dev/null || echo "0")

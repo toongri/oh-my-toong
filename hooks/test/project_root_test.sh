@@ -144,11 +144,11 @@ test_get_project_root_function_exists_in_session_start() {
 # =============================================================================
 
 test_get_project_root_strips_claude_sisyphus_suffix() {
-    # get_project_root should strip .claude/sisyphus suffix from path
-    if grep -A 10 '^get_project_root\(\)' "$HOOKS_DIR/persistent-mode.sh" | grep -q '.claude/sisyphus'; then
+    # get_project_root should strip .omt suffix from path
+    if grep -A 10 '^get_project_root\(\)' "$HOOKS_DIR/persistent-mode.sh" | grep -q '.omt'; then
         return 0
     else
-        echo "ASSERTION FAILED: get_project_root should handle .claude/sisyphus suffix"
+        echo "ASSERTION FAILED: get_project_root should handle .omt suffix"
         return 1
     fi
 }
@@ -236,7 +236,7 @@ test_session_start_uses_project_root_variable() {
 # =============================================================================
 
 test_persistent_mode_state_dir_is_local() {
-    # persistent-mode.sh should use STATE_DIR in $PROJECT_ROOT/.claude/sisyphus/state/
+    # persistent-mode.sh should use STATE_DIR in $PROJECT_ROOT/.omt/state/
     if grep -q 'STATE_DIR=.*PROJECT_ROOT.*sisyphus/state' "$HOOKS_DIR/persistent-mode.sh"; then
         return 0
     else
@@ -280,10 +280,10 @@ test_persistent_mode_creates_state_dir() {
 test_get_project_root_behavior_with_nested_path() {
     # Setup: Create project structure with .git
     mkdir -p "$TEST_TMP_DIR/myproject/.git"
-    mkdir -p "$TEST_TMP_DIR/myproject/.claude/sisyphus"
+    mkdir -p "$TEST_TMP_DIR/myproject/.omt"
 
     # Create a ralph state file to trigger the hook
-    cat > "$TEST_TMP_DIR/myproject/.claude/sisyphus/ralph-state.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/myproject/.omt/ralph-state.json" << 'EOF'
 {
   "active": true,
   "iteration": 1,
@@ -294,18 +294,18 @@ test_get_project_root_behavior_with_nested_path() {
 EOF
 
     # Run the persistent-mode.sh with cwd set to nested directory
-    local nested_dir="$TEST_TMP_DIR/myproject/.claude/sisyphus"
+    local nested_dir="$TEST_TMP_DIR/myproject/.omt"
     local output
     output=$(echo "{\"cwd\": \"$nested_dir\"}" | "$HOOKS_DIR/persistent-mode.sh" 2>&1) || true
 
     # State files should be created in the project root, not nested
-    if [[ -d "$TEST_TMP_DIR/myproject/.claude/sisyphus/state" ]]; then
+    if [[ -d "$TEST_TMP_DIR/myproject/.omt/state" ]]; then
         return 0
     else
         echo "ASSERTION FAILED: State directory should be created in project root"
-        echo "  Expected: $TEST_TMP_DIR/myproject/.claude/sisyphus/state/"
+        echo "  Expected: $TEST_TMP_DIR/myproject/.omt/state/"
         echo "  Nested dir tested: $nested_dir"
-        ls -la "$TEST_TMP_DIR/myproject/.claude/sisyphus/" 2>/dev/null || true
+        ls -la "$TEST_TMP_DIR/myproject/.omt/" 2>/dev/null || true
         return 1
     fi
 }
@@ -313,10 +313,10 @@ EOF
 test_state_files_created_in_project_local_dir() {
     # Setup: Create project structure
     mkdir -p "$TEST_TMP_DIR/myproject/.git"
-    mkdir -p "$TEST_TMP_DIR/myproject/.claude/sisyphus"
+    mkdir -p "$TEST_TMP_DIR/myproject/.omt"
 
     # Create ultrawork state to trigger the hook with incomplete todos
-    cat > "$TEST_TMP_DIR/myproject/.claude/sisyphus/ultrawork-state.json" << 'EOF'
+    cat > "$TEST_TMP_DIR/myproject/.omt/ultrawork-state.json" << 'EOF'
 {
   "active": true,
   "started_at": "2024-01-01T00:00:00",
@@ -358,7 +358,7 @@ EOF
     fi
 
     # Verify state files ARE in project-local directory
-    if [[ -d "$TEST_TMP_DIR/myproject/.claude/sisyphus/state" ]]; then
+    if [[ -d "$TEST_TMP_DIR/myproject/.omt/state" ]]; then
         return 0
     else
         echo "ASSERTION FAILED: State directory should be created in project"

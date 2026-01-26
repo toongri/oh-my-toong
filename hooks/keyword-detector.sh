@@ -20,12 +20,12 @@ if [ -z "$SESSION_ID" ] || [ "$SESSION_ID" = "null" ]; then
   SESSION_ID="default"
 fi
 
-# Find project root by looking for markers and escaping .claude/sisyphus if inside
+# Find project root by looking for markers and escaping .omt if inside
 get_project_root() {
   local dir="$1"
 
-  # Strip .claude/sisyphus suffix if present (prevents nesting)
-  dir="${dir%/.claude/sisyphus}"
+  # Strip .omt suffix if present (prevents nesting)
+  dir="${dir%/.omt}"
   dir="${dir%/.claude}"
 
   # Look for project root markers
@@ -38,7 +38,7 @@ get_project_root() {
   done
 
   # Fallback: return the stripped directory
-  echo "${1%/.claude/sisyphus}"
+  echo "${1%/.omt}"
 }
 
 # Get project root
@@ -85,9 +85,9 @@ create_ralph_state() {
   # Escape prompt for JSON (basic escaping)
   local escaped_prompt=$(echo "$prompt" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
 
-  # Create local .claude/sisyphus directory
-  mkdir -p "$dir/.claude/sisyphus" 2>/dev/null
-  cat > "$dir/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null << EOF
+  # Create local .omt directory
+  mkdir -p "$dir/.omt" 2>/dev/null
+  cat > "$dir/.omt/ralph-state-${SESSION_ID}.json" 2>/dev/null << EOF
 {
   "active": true,
   "iteration": 1,

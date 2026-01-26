@@ -12,7 +12,7 @@ Execute these commands to fully cancel the Ralph Loop and clean up all associate
 
 ```bash
 # Navigate to state directory
-cd .claude/sisyphus
+cd .omt
 
 # Remove all session-specific ralph state files
 rm -f ralph-state-*.json 2>/dev/null || true
@@ -33,7 +33,7 @@ After running the cleanup commands, verify the cancellation was successful:
 
 ```bash
 # Should return no files
-ls -la .claude/sisyphus/ralph-state-*.json 2>/dev/null || echo "ralph-state files removed"
+ls -la .omt/ralph-state-*.json 2>/dev/null || echo "ralph-state files removed"
 ```
 
 ## POST-CANCELLATION

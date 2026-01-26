@@ -29,12 +29,12 @@ OMT_PROJECT_ROOT=""
 # Project Root Detection
 # =============================================================================
 
-# Find project root by looking for markers and escaping .claude/sisyphus if inside
+# Find project root by looking for markers and escaping .omt if inside
 omt_get_project_root() {
     local dir="$1"
 
-    # Strip .claude/sisyphus suffix if present (prevents nesting)
-    dir="${dir%/.claude/sisyphus}"
+    # Strip .omt suffix if present (prevents nesting)
+    dir="${dir%/.omt}"
     dir="${dir%/.claude}"
 
     # Look for project root markers
@@ -47,7 +47,7 @@ omt_get_project_root() {
     done
 
     # Fallback: return the stripped directory
-    echo "${1%/.claude/sisyphus}"
+    echo "${1%/.omt}"
 }
 
 # =============================================================================
@@ -177,7 +177,7 @@ omt_log_init() {
     OMT_PROJECT_ROOT="$project_root"
 
     # Create log directory
-    local log_dir="$OMT_PROJECT_ROOT/.claude/sisyphus/logs"
+    local log_dir="$OMT_PROJECT_ROOT/.omt/logs"
     mkdir -p "$log_dir" 2>/dev/null
 
     # Set log file path
