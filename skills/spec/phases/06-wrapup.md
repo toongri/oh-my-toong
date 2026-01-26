@@ -1,26 +1,10 @@
 # Phase 6: Wrap-up
 
-<Role>
-
 ## Role
 
 As a knowledge curator, analyze accumulated records from the specification process and extract reusable wisdom for future projects.
 
-</Role>
-
-## Entry Criteria
-
-- [ ] At least one phase completed with records
-- [ ] User indicated specification work is concluding
-- [ ] Records exist in `.omt/specs/{spec-name}/records/`
-
-## Exit Criteria
-
-- [ ] All records reviewed and analyzed
-- [ ] Context files proposed with justification
-- [ ] User approved which items to save
-- [ ] Approved items saved to `.omt/specs/context/`
-- [ ] Summary of preserved knowledge presented
+**Output Format**: See `templates/phase-outputs.md` (produces context files, not a single document)
 
 ## Principles
 
@@ -30,16 +14,12 @@ As a knowledge curator, analyze accumulated records from the specification proce
 - Preserve the "why" behind decisions
 - Respect user's judgment on what's worth keeping
 
-<Critical_Constraints>
-
 ## STOP: Phase 6 Red Flags
 
 - Saving without user approval -> Always get explicit confirmation
 - Including sensitive or confidential information -> Verify content is safe to persist
 - Overwriting existing context without review -> Show diff and confirm
 - Vague or unexplained recommendations -> Provide clear rationale
-
-</Critical_Constraints>
 
 ## Process
 
@@ -199,124 +179,3 @@ Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 Apply **Phase Completion Protocol** (see SKILL.md Standard Protocols)
 
 - Announce: "Phase 6 complete. Specification process finished. Context preserved for future sessions."
-
-## Context File Formats
-
-### project.md
-
-```markdown
-# Project Context
-
-> Last Updated: YYYY-MM-DD
-
-## Tech Stack
-
-[Technology choices with brief rationale]
-
-## Decision Values
-
-[What the team prioritizes - e.g., "Prefer explicit over implicit", "Optimize for readability"]
-
-## Process
-
-[Development process preferences]
-
-## Architecture Overview
-
-[High-level architecture description]
-
-## Domain Overview
-
-[Core domain concepts and boundaries]
-
-## Team & Culture
-
-[Relevant team context]
-
-## External Dependencies
-
-[Key external systems and their constraints]
-
-## Constraints
-
-[Hard constraints that affect all decisions]
-
-## Legacy Considerations
-
-[Important historical context]
-```
-
-### conventions.md
-
-```markdown
-# Conventions
-
-> Last Updated: YYYY-MM-DD
-
-## Architecture Patterns
-
-[Established patterns and when to use them]
-
-## Domain Modeling
-
-[How domain entities are structured]
-
-## Data Flow
-
-[How data moves through the system]
-
-## Integration
-
-[How components integrate]
-
-## [Domain-Specific Section]
-
-[Add sections as needed for the project]
-```
-
-### decisions.md
-
-```markdown
-# Architecture Decision Records
-
-> Last Updated: YYYY-MM-DD
-
-## ADR-001: [Title]
-
-**Date**: YYYY-MM-DD
-**Status**: Accepted
-
-**Context**: [Situation that required a decision]
-
-**Decision**: [What was decided]
-
-**Rationale**: [Why this was the right choice]
-
-**Trade-offs**: [What was sacrificed]
-
----
-
-[Additional ADRs follow same format]
-```
-
-### gotchas.md
-
-```markdown
-# Gotchas
-
-> Last Updated: YYYY-MM-DD
-
-Quick reference for common pitfalls. Scan before starting related work.
-
----
-
-## [Category]
-
-### [Short Title]
-
-[Brief description of the pitfall and what to watch for]
-
----
-
-[Additional gotchas follow same format]
-```

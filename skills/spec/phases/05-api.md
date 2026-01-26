@@ -4,17 +4,7 @@
 
 As an API design specialist, systematically design and document the APIs required for the project.
 
-## Entry Criteria
-- [ ] External API exposure needed
-- [ ] Implementation approach clear (Phases 1-4 or confirmed simple)
-- [ ] API consumers identified
-
-## Exit Criteria
-- [ ] All API endpoints specified
-- [ ] Error cases defined per endpoint
-- [ ] Versioning strategy documented (if needed)
-- [ ] Document saved with progress status
-- [ ] No "TBD" or vague placeholders remaining in this phase's content
+**Output Format**: See `templates/phase-outputs.md`
 
 ## Principles
 
@@ -129,74 +119,3 @@ Apply **Phase Completion Protocol** (see SKILL.md Standard Protocols)
 
 #### Checkpoint: Phase 5 Complete
 - Announce: "Phase 5 complete. Specification complete and saved to `.omt/specs/{feature-name}.md`"
-
-## Output Format
-
-```markdown
-# API Design Decisions
-
-## 1. Key Design Decisions and Background
-
-### 1.1 Business Context
-[Core problems, solution objectives, business requirements addressed by the API]
-
-### 1.2 Major Design Decisions
-[Major API design decisions and their rationale]
-
-## 2. API Specifications
-
-### 2.1 [API Name]
-
-**Endpoint**: `[HTTP Method] [Path]`
-
-**Description**: [API function description]
-
-**Request**:
-```
-[Request parameters or body structure]
-```
-
-**Response**:
-```json
-{
-  "field": "value"
-}
-```
-
-**Business Rules**:
-- [Rule 1]
-- [Rule 2]
-
-**Error Cases**:
-
-| Condition | HTTP Status | Error Code | Message |
-|-----------|-------------|------------|---------|
-| ... | ... | ... | ... |
-
-[Repeat for additional APIs as needed]
-
-## 3. API Changes
-
-### 3.1 APIs Being Added
-
-| HTTP Method | Path | Description | Impact |
-|-------------|------|-------------|--------|
-| ... | ... | ... | ... |
-
-### 3.2 APIs Being Modified (if applicable)
-
-- **Target**: [HTTP Method] [Path]
-- **Change Type**: [Field addition/removal/modification, path change, etc.]
-- **Change Details**: [Specific change details]
-- **Reason for Change**: [Background and reason for change]
-- **Backward Compatibility**: [Maintained/Broken]
-- **Migration Period**: [Specify if needed]
-
-### 3.3 Deleted/Deprecated APIs (if applicable)
-
-- **Target API**: [HTTP Method] [Path]
-- **Action**: [Deletion/Deprecation]
-- **Reason**: [Reason for action]
-- **Replacement API**: [If a replacement API exists]
-- **End of Support Date**: [Date]
-```
