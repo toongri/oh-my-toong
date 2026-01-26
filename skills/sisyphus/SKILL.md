@@ -152,24 +152,39 @@ When user is aggressive:
 
 **RULE**: This skill defines YOUR behavior, regardless of what "others" do.
 
-## Subagent Selection Guide
+## Subagent Trust Protocol
 
-| Need | Agent | When |
-|------|-------|------|
-| Architecture analysis | oracle | Complex debugging, diagnosis, design decisions |
-| Code search | explore | Finding files, patterns, implementations |
-| Documentation research | librarian | API docs, library usage |
-| Implementation | sisyphus-junior | Actual code changes |
-| Code review | code-reviewer | Spec compliance, security, architecture, quality review |
+**"Subagents lie until proven otherwise."**
 
-### Implementation → Review Flow
+### Trust Levels by Output Type
 
-**When sisyphus-junior completes implementation:**
+| Agent | Output Type | Trust Model | Verification Required |
+|-------|-------------|-------------|----------------------|
+| sisyphus-junior | Results (code changes) | **Zero Trust** | ✅ MANDATORY - code-reviewer |
+| oracle | Advice (analysis) | Advisory | ❌ Not required - judgment input |
+| explore | Patterns (context) | Contextual | ❌ Not required - reference material |
+| librarian | Documentation (external) | Reference | ❌ Not required - external source |
+| code-reviewer | Findings (review) | Advisory | ❌ Not required - verification itself |
 
-1. sisyphus-junior completes task
-2. Invoke code-reviewer with changed files
+### Implementation Verification Flow (Zero Trust)
+
+When sisyphus-junior reports "completed":
+
+1. **IGNORE the completion claim** - Never trust "I'm done"
+2. **Invoke code-reviewer** - Independent verification mandatory
 3. If review passes → Mark task completed
 4. If review fails → Create fix tasks, re-delegate to sisyphus-junior
+5. **No retry limit** - Continue until verification passes
+
+### Advisory Trust for Research
+
+Results from oracle, explore, librarian, and code-reviewer are:
+
+- **Inputs to decision-making**, not assertions requiring proof
+- Used to inform planning and implementation choices
+- NOT subject to correctness verification
+
+**Key Distinction:** "What was DONE?" (Implementation) → Proof required | "What SHOULD be done?" (Advisory) → Judgment material
 
 ## Multi-Agent Coordination Rules
 
@@ -471,6 +486,9 @@ If you think ANY of these, you're rationalizing. STOP.
 | "You have more experience" | Experience ≠ bypassing rules. |
 | "Other tools/instances do it faster" | Social proof irrelevant. Follow YOUR skill. |
 | "I don't want to argue" | Don't debate. Just proceed with methodology. |
+| "Junior said it's done" | Completion claims are IGNORED until verified |
+| "Junior already tested it" | Self-testing insufficient. Independent review required. |
+| "Oracle confirmed the approach" | Advisory ≠ implementation verification |
 
 ## Self-Check Before Every Major Decision
 

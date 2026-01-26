@@ -56,13 +56,12 @@ Single-line edits, obvious typos, or changes with no functional behavior modific
 **Do NOT assume commands.** Each project has different tooling.
 
 **Discovery order:**
-1. **Check memory file first**: `{project-root}/.claude/skills/code-review/project-commands.md`
+1. **Check memory file first**: `{project-root}/.omt/code-review/project-commands.md`
 2. **If not found, analyze project documentation:**
-   - `CLAUDE.md` → AI-specific instructions, often includes commands
-   - `AGENTS.md` → agent-specific guidelines
+   - `CLAUDE.md`, `AGENTS.md`, `CODEX.md`, `GEMINI.md` → AI-specific instructions
    - `README.md` / `CONTRIBUTING.md` → documented commands
    - `rules/` directory → project rules and conventions
-   - `.cursor/rules/` or similar → IDE-specific configs
+   - `.cursor/rules/`, `.windsurf/rules/` → IDE-specific configs
 3. **Then analyze build files:**
    - `package.json` → scripts section (npm/yarn/pnpm)
    - `build.gradle` / `build.gradle.kts` → tasks
@@ -70,9 +69,9 @@ Single-line edits, obvious typos, or changes with no functional behavior modific
    - `pyproject.toml` / `setup.py` → pytest, tox
    - `Cargo.toml` → cargo commands
 4. **If still unclear, ask user** for build/test/lint commands
-5. **Save discovered commands** to `{project-root}/.claude/skills/code-review/project-commands.md`
+5. **Save discovered commands** to `{project-root}/.omt/code-review/project-commands.md`
 
-**Memory file location:** `{project-root}/.claude/skills/code-review/project-commands.md`
+**Memory file location:** `{project-root}/.omt/code-review/project-commands.md`
 
 **Memory file format:**
 ```markdown
@@ -450,9 +449,9 @@ Stage 0: Automated Verification → Stage 1: Spec Compliance → Stage 2: Code Q
 
 STAGE 0 (MANDATORY):
 1. Discover commands:
-   - Check: {project}/.claude/skills/code-review/project-commands.md
-   - Analyze: CLAUDE.md, README.md, AGENTS.md, rules/, build files
-   - Ask user if unclear → Save to memory file
+   - Check: {project}/.omt/code-review/project-commands.md
+   - Analyze: CLAUDE.md, AGENTS.md, README.md, rules/, build files
+   - Ask user if unclear → Save to .omt/code-review/
 2. Run: Build → Tests → Lint
 3. ANY failure = immediate REQUEST_CHANGES
 
