@@ -2,13 +2,10 @@ import {
   readRalphState,
   updateRalphState,
   cleanupRalphState,
-  getAttemptCount,
-  incrementAttempts,
-  resetAttempts,
-  getTodoCount,
-  saveTodoCount,
-  cleanupAttemptFiles,
-  MAX_TODO_CONTINUATION_ATTEMPTS,
+  getBlockCount,
+  incrementBlockCount,
+  cleanupBlockCountFiles,
+  MAX_BLOCK_COUNT,
 } from './state.js';
 import type { RalphState } from './types.js';
 import { mkdir, rm, writeFile, readFile } from 'fs/promises';
@@ -149,8 +146,8 @@ describe('Ralph state management', () => {
   });
 });
 
-describe('Attempt counting', () => {
-  const testDir = join(tmpdir(), 'state-test-attempts-' + Date.now());
+describe('Block counting', () => {
+  const testDir = join(tmpdir(), 'state-test-block-count-' + Date.now());
   const stateDir = join(testDir, 'state');
   const attemptId = 'attempt-123';
 
@@ -163,124 +160,75 @@ describe('Attempt counting', () => {
   });
 
   beforeEach(async () => {
-    // Clean up attempt files before each test
-    try { await rm(join(stateDir, `todo-attempts-${attemptId}`), { force: true }); } catch {}
-    try { await rm(join(stateDir, `todo-count-${attemptId}`), { force: true }); } catch {}
+    // Clean up block count files before each test
+    try { await rm(join(stateDir, `block-count-${attemptId}`), { force: true }); } catch {}
   });
 
-  describe('MAX_TODO_CONTINUATION_ATTEMPTS', () => {
+  describe('MAX_BLOCK_COUNT', () => {
     it('should be 5', () => {
-      expect(MAX_TODO_CONTINUATION_ATTEMPTS).toBe(5);
+      expect(MAX_BLOCK_COUNT).toBe(5);
     });
   });
 
-  describe('getAttemptCount', () => {
+  describe('getBlockCount', () => {
     it('should return 0 when file does not exist', () => {
-      const result = getAttemptCount(stateDir, 'nonexistent');
+      const result = getBlockCount(stateDir, 'nonexistent');
 
       expect(result).toBe(0);
     });
 
     it('should return count from file', async () => {
-      await writeFile(join(stateDir, `todo-attempts-${attemptId}`), '3');
+      await writeFile(join(stateDir, `block-count-${attemptId}`), '3');
 
-      const result = getAttemptCount(stateDir, attemptId);
+      const result = getBlockCount(stateDir, attemptId);
 
       expect(result).toBe(3);
     });
 
     it('should return 0 for invalid content', async () => {
-      await writeFile(join(stateDir, `todo-attempts-${attemptId}`), 'not a number');
+      await writeFile(join(stateDir, `block-count-${attemptId}`), 'not a number');
 
-      const result = getAttemptCount(stateDir, attemptId);
+      const result = getBlockCount(stateDir, attemptId);
 
       expect(result).toBe(0);
     });
   });
 
-  describe('incrementAttempts', () => {
+  describe('incrementBlockCount', () => {
     it('should increment from 0 when no file exists', () => {
-      incrementAttempts(stateDir, attemptId);
+      incrementBlockCount(stateDir, attemptId);
 
-      expect(getAttemptCount(stateDir, attemptId)).toBe(1);
+      expect(getBlockCount(stateDir, attemptId)).toBe(1);
     });
 
     it('should increment existing count', async () => {
-      await writeFile(join(stateDir, `todo-attempts-${attemptId}`), '2');
+      await writeFile(join(stateDir, `block-count-${attemptId}`), '2');
 
-      incrementAttempts(stateDir, attemptId);
+      incrementBlockCount(stateDir, attemptId);
 
-      expect(getAttemptCount(stateDir, attemptId)).toBe(3);
+      expect(getBlockCount(stateDir, attemptId)).toBe(3);
     });
 
     it('should create state directory if needed', async () => {
       const newStateDir = join(testDir, 'new-state');
 
-      incrementAttempts(newStateDir, attemptId);
+      incrementBlockCount(newStateDir, attemptId);
 
       expect(existsSync(newStateDir)).toBe(true);
     });
   });
 
-  describe('resetAttempts', () => {
-    it('should delete attempt file', async () => {
-      await writeFile(join(stateDir, `todo-attempts-${attemptId}`), '5');
+  describe('cleanupBlockCountFiles', () => {
+    it('should delete block count file', async () => {
+      await writeFile(join(stateDir, `block-count-${attemptId}`), '3');
 
-      resetAttempts(stateDir, attemptId);
+      cleanupBlockCountFiles(stateDir, attemptId);
 
-      expect(existsSync(join(stateDir, `todo-attempts-${attemptId}`))).toBe(false);
-    });
-
-    it('should not throw when file does not exist', () => {
-      expect(() => resetAttempts(stateDir, 'nonexistent')).not.toThrow();
-    });
-  });
-
-  describe('getTodoCount', () => {
-    it('should return -1 when file does not exist', () => {
-      const result = getTodoCount(stateDir, 'nonexistent');
-
-      expect(result).toBe(-1);
-    });
-
-    it('should return count from file', async () => {
-      await writeFile(join(stateDir, `todo-count-${attemptId}`), '7');
-
-      const result = getTodoCount(stateDir, attemptId);
-
-      expect(result).toBe(7);
-    });
-  });
-
-  describe('saveTodoCount', () => {
-    it('should save count to file', () => {
-      saveTodoCount(stateDir, attemptId, 10);
-
-      expect(getTodoCount(stateDir, attemptId)).toBe(10);
-    });
-
-    it('should create state directory if needed', async () => {
-      const newStateDir = join(testDir, 'new-state-count');
-
-      saveTodoCount(newStateDir, attemptId, 5);
-
-      expect(existsSync(newStateDir)).toBe(true);
-    });
-  });
-
-  describe('cleanupAttemptFiles', () => {
-    it('should delete both attempt and count files', async () => {
-      await writeFile(join(stateDir, `todo-attempts-${attemptId}`), '3');
-      await writeFile(join(stateDir, `todo-count-${attemptId}`), '5');
-
-      cleanupAttemptFiles(stateDir, attemptId);
-
-      expect(existsSync(join(stateDir, `todo-attempts-${attemptId}`))).toBe(false);
-      expect(existsSync(join(stateDir, `todo-count-${attemptId}`))).toBe(false);
+      expect(existsSync(join(stateDir, `block-count-${attemptId}`))).toBe(false);
     });
 
     it('should not throw when files do not exist', () => {
-      expect(() => cleanupAttemptFiles(stateDir, 'nonexistent')).not.toThrow();
+      expect(() => cleanupBlockCountFiles(stateDir, 'nonexistent')).not.toThrow();
     });
   });
 });

@@ -232,14 +232,13 @@ describe('makeDecision', () => {
       makeDecision(context);
 
       const { existsSync } = await import('fs');
-      const attemptFile = join(stateDir, 'todo-attempts-test-session');
+      const attemptFile = join(stateDir, 'block-count-test-session');
       expect(existsSync(attemptFile)).toBe(true);
     });
 
     it('should allow stop after max continuation attempts (escape hatch)', async () => {
-      // Set attempt count to max and todo count to same value (so no reset)
-      await writeFile(join(stateDir, 'todo-attempts-test-session'), '5');
-      await writeFile(join(stateDir, 'todo-count-test-session'), '3');
+      // Set attempt count to max
+      await writeFile(join(stateDir, 'block-count-test-session'), '5');
 
       const context = createContext({ incompleteTodoCount: 3 });
 
@@ -249,17 +248,15 @@ describe('makeDecision', () => {
     });
 
     it('should cleanup attempt files when escape hatch triggers', async () => {
-      // Set attempt count to max and todo count to same value (so no reset)
-      await writeFile(join(stateDir, 'todo-attempts-test-session'), '5');
-      await writeFile(join(stateDir, 'todo-count-test-session'), '3');
+      // Set attempt count to max
+      await writeFile(join(stateDir, 'block-count-test-session'), '5');
 
       const context = createContext({ incompleteTodoCount: 3 });
 
       makeDecision(context);
 
       const { existsSync } = await import('fs');
-      expect(existsSync(join(stateDir, 'todo-attempts-test-session'))).toBe(false);
-      expect(existsSync(join(stateDir, 'todo-count-test-session'))).toBe(false);
+      expect(existsSync(join(stateDir, 'block-count-test-session'))).toBe(false);
     });
 
     it('should allow stop when no incomplete todos', () => {

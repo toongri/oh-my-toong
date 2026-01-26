@@ -69,7 +69,7 @@ function generateAttemptId(sessionId, directory) {
 }
 
 // src/state.ts
-var MAX_TODO_CONTINUATION_ATTEMPTS = 5;
+var MAX_BLOCK_COUNT = 5;
 function readRalphState(projectRoot, sessionId) {
   const path = `${projectRoot}/.omt/ralph-state-${sessionId}.json`;
   const content = readFileOrNull(path);
@@ -88,29 +88,17 @@ function updateRalphState(projectRoot, sessionId, state) {
 function cleanupRalphState(projectRoot, sessionId) {
   deleteFile(`${projectRoot}/.omt/ralph-state-${sessionId}.json`);
 }
-function getAttemptCount(stateDir, attemptId) {
-  const content = readFileOrNull(`${stateDir}/todo-attempts-${attemptId}`);
+function getBlockCount(stateDir, attemptId) {
+  const content = readFileOrNull(`${stateDir}/block-count-${attemptId}`);
   return content ? parseInt(content, 10) || 0 : 0;
 }
-function incrementAttempts(stateDir, attemptId) {
-  const current = getAttemptCount(stateDir, attemptId);
+function incrementBlockCount(stateDir, attemptId) {
+  const current = getBlockCount(stateDir, attemptId);
   ensureDir(stateDir);
-  writeFileSafe(`${stateDir}/todo-attempts-${attemptId}`, String(current + 1));
+  writeFileSafe(`${stateDir}/block-count-${attemptId}`, String(current + 1));
 }
-function resetAttempts(stateDir, attemptId) {
-  deleteFile(`${stateDir}/todo-attempts-${attemptId}`);
-}
-function getTodoCount(stateDir, attemptId) {
-  const content = readFileOrNull(`${stateDir}/todo-count-${attemptId}`);
-  return content ? parseInt(content, 10) : -1;
-}
-function saveTodoCount(stateDir, attemptId, count) {
-  ensureDir(stateDir);
-  writeFileSafe(`${stateDir}/todo-count-${attemptId}`, String(count));
-}
-function cleanupAttemptFiles(stateDir, attemptId) {
-  deleteFile(`${stateDir}/todo-attempts-${attemptId}`);
-  deleteFile(`${stateDir}/todo-count-${attemptId}`);
+function cleanupBlockCountFiles(stateDir, attemptId) {
+  deleteFile(`${stateDir}/block-count-${attemptId}`);
 }
 
 // ../lib/dist/logging.js
@@ -333,22 +321,16 @@ function makeDecision(context) {
   const attemptId = generateAttemptId(sessionId, projectRoot);
   ensureDir(stateDir);
   const transcript = analyzeTranscript(transcriptPath);
-  const currentCount = incompleteTodoCount;
-  const previousCount = getTodoCount(stateDir, attemptId);
-  if (currentCount !== previousCount) {
-    resetAttempts(stateDir, attemptId);
-    saveTodoCount(stateDir, attemptId, currentCount);
-  }
   const ralphState = readRalphState(projectRoot, sessionId);
   if (ralphState && ralphState.active) {
     if (transcript.hasOracleApproval) {
       cleanupRalphState(projectRoot, sessionId);
-      cleanupAttemptFiles(stateDir, attemptId);
+      cleanupBlockCountFiles(stateDir, attemptId);
       return formatContinueOutput();
     }
     if (ralphState.iteration >= ralphState.max_iterations) {
       cleanupRalphState(projectRoot, sessionId);
-      cleanupAttemptFiles(stateDir, attemptId);
+      cleanupBlockCountFiles(stateDir, attemptId);
       return formatContinueOutput();
     }
     const newIteration = ralphState.iteration + 1;
@@ -372,12 +354,12 @@ function makeDecision(context) {
     return formatBlockOutput(message);
   }
   if (incompleteTodoCount > 0) {
-    const attempts = getAttemptCount(stateDir, attemptId);
-    if (attempts >= MAX_TODO_CONTINUATION_ATTEMPTS) {
-      cleanupAttemptFiles(stateDir, attemptId);
+    const blockCount = getBlockCount(stateDir, attemptId);
+    if (blockCount >= MAX_BLOCK_COUNT) {
+      cleanupBlockCountFiles(stateDir, attemptId);
       return formatContinueOutput();
     }
-    incrementAttempts(stateDir, attemptId);
+    incrementBlockCount(stateDir, attemptId);
     const message = buildTodoContinuationMessage(incompleteTodoCount);
     return formatBlockOutput(message);
   }

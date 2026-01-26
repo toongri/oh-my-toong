@@ -9,6 +9,7 @@ agents:
     - metis
     - momus
     - oracle
+    - code-reviewer
     - component: sisyphus-junior
       add-skills:
         - testing

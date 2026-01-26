@@ -1,7 +1,7 @@
 import { RalphState } from './types.js';
 import { readFileOrNull, writeFileSafe, deleteFile, ensureDir } from './utils.js';
 
-const MAX_TODO_CONTINUATION_ATTEMPTS = 5;
+const MAX_BLOCK_COUNT = 5;
 
 export function readRalphState(projectRoot: string, sessionId: string): RalphState | null {
   const path = `${projectRoot}/.omt/ralph-state-${sessionId}.json`;
@@ -25,35 +25,20 @@ export function cleanupRalphState(projectRoot: string, sessionId: string): void 
   deleteFile(`${projectRoot}/.omt/ralph-state-${sessionId}.json`);
 }
 
-// Attempt counting for stuck agent escape hatch
-export function getAttemptCount(stateDir: string, attemptId: string): number {
-  const content = readFileOrNull(`${stateDir}/todo-attempts-${attemptId}`);
+// Block counting for stuck agent escape hatch
+export function getBlockCount(stateDir: string, attemptId: string): number {
+  const content = readFileOrNull(`${stateDir}/block-count-${attemptId}`);
   return content ? parseInt(content, 10) || 0 : 0;
 }
 
-export function incrementAttempts(stateDir: string, attemptId: string): void {
-  const current = getAttemptCount(stateDir, attemptId);
+export function incrementBlockCount(stateDir: string, attemptId: string): void {
+  const current = getBlockCount(stateDir, attemptId);
   ensureDir(stateDir);
-  writeFileSafe(`${stateDir}/todo-attempts-${attemptId}`, String(current + 1));
+  writeFileSafe(`${stateDir}/block-count-${attemptId}`, String(current + 1));
 }
 
-export function resetAttempts(stateDir: string, attemptId: string): void {
-  deleteFile(`${stateDir}/todo-attempts-${attemptId}`);
+export function cleanupBlockCountFiles(stateDir: string, attemptId: string): void {
+  deleteFile(`${stateDir}/block-count-${attemptId}`);
 }
 
-export function getTodoCount(stateDir: string, attemptId: string): number {
-  const content = readFileOrNull(`${stateDir}/todo-count-${attemptId}`);
-  return content ? parseInt(content, 10) : -1;
-}
-
-export function saveTodoCount(stateDir: string, attemptId: string, count: number): void {
-  ensureDir(stateDir);
-  writeFileSafe(`${stateDir}/todo-count-${attemptId}`, String(count));
-}
-
-export function cleanupAttemptFiles(stateDir: string, attemptId: string): void {
-  deleteFile(`${stateDir}/todo-attempts-${attemptId}`);
-  deleteFile(`${stateDir}/todo-count-${attemptId}`);
-}
-
-export { MAX_TODO_CONTINUATION_ATTEMPTS };
+export { MAX_BLOCK_COUNT };

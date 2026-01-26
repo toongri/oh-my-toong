@@ -1,9 +1,8 @@
 import { HookOutput, RalphState } from './types.js';
 import {
   readRalphState, updateRalphState, cleanupRalphState,
-  getAttemptCount, incrementAttempts, resetAttempts,
-  getTodoCount, saveTodoCount, cleanupAttemptFiles,
-  MAX_TODO_CONTINUATION_ATTEMPTS
+  getBlockCount, incrementBlockCount, cleanupBlockCountFiles,
+  MAX_BLOCK_COUNT
 } from './state.js';
 import { analyzeTranscript } from './transcript-detector.js';
 import { generateAttemptId, ensureDir } from './utils.js';
@@ -91,28 +90,20 @@ export function makeDecision(context: DecisionContext): HookOutput {
   // Analyze transcript for completion markers
   const transcript = analyzeTranscript(transcriptPath);
 
-  // Progress detection: reset attempts when todo count changes
-  const currentCount = incompleteTodoCount;
-  const previousCount = getTodoCount(stateDir, attemptId);
-  if (currentCount !== previousCount) {
-    resetAttempts(stateDir, attemptId);
-    saveTodoCount(stateDir, attemptId, currentCount);
-  }
-
   // Priority 1: Ralph Loop with Oracle Verification
   const ralphState = readRalphState(projectRoot, sessionId);
   if (ralphState && ralphState.active) {
     // Check for oracle approval -> clean up and allow stop
     if (transcript.hasOracleApproval) {
       cleanupRalphState(projectRoot, sessionId);
-      cleanupAttemptFiles(stateDir, attemptId);
+      cleanupBlockCountFiles(stateDir, attemptId);
       return formatContinueOutput();
     }
 
     // Check max iterations
     if (ralphState.iteration >= ralphState.max_iterations) {
       cleanupRalphState(projectRoot, sessionId);
-      cleanupAttemptFiles(stateDir, attemptId);
+      cleanupBlockCountFiles(stateDir, attemptId);
       return formatContinueOutput();
     }
 
@@ -146,14 +137,14 @@ export function makeDecision(context: DecisionContext): HookOutput {
   // Priority 2: Baseline todo-continuation (incomplete tasks from file-based counting)
   if (incompleteTodoCount > 0) {
     // Check escape hatch
-    const attempts = getAttemptCount(stateDir, attemptId);
-    if (attempts >= MAX_TODO_CONTINUATION_ATTEMPTS) {
-      cleanupAttemptFiles(stateDir, attemptId);
+    const blockCount = getBlockCount(stateDir, attemptId);
+    if (blockCount >= MAX_BLOCK_COUNT) {
+      cleanupBlockCountFiles(stateDir, attemptId);
       return formatContinueOutput();
     }
 
-    // Increment attempts and block
-    incrementAttempts(stateDir, attemptId);
+    // Increment block count and block
+    incrementBlockCount(stateDir, attemptId);
     const message = buildTodoContinuationMessage(incompleteTodoCount);
     return formatBlockOutput(message);
   }

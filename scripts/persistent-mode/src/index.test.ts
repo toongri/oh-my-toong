@@ -157,12 +157,12 @@ describe('main entry point', () => {
     });
   });
 
-  // Priority 3 todo-continuation baseline was REMOVED
-  // The transcript-based todo counting had a scope mismatch with Claude Code's
-  // request-level TaskList API, causing phantom todos from previous requests
-  // to block new requests. Only Ralph Loop and Ultrawork modes enforce todo completion.
+  // Transcript-based todo counting was REMOVED in favor of file-based counting.
+  // The transcript approach had a scope mismatch with Claude Code's request-level
+  // TaskList API, causing phantom todos from previous requests to block new requests.
+  // File-based counting (Priority 2) now reads from ~/.claude/tasks/{sessionId}/.
 
-  describe('todo counting from transcript (Priority 3 removed)', () => {
+  describe('transcript-based todo counting (removed)', () => {
     it('should NOT block when incomplete todos exist without ralph/ultrawork', async () => {
       // Create transcript with TaskCreate calls
       const transcriptPath = join(testDir, 'todos-transcript.jsonl');
@@ -216,7 +216,8 @@ describe('main entry point', () => {
 
       expect(capturedOutput.length).toBeGreaterThan(0);
       const output = JSON.parse(capturedOutput[capturedOutput.length - 1]);
-      // Should NOT block - Priority 3 baseline todo-continuation was removed
+      // Should NOT block - transcript-based counting is not used
+      // (file-based counting would find no tasks in ~/.claude/tasks/)
       expect(output.continue).toBe(true);
     });
   });
