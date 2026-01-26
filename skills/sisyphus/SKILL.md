@@ -160,7 +160,16 @@ When user is aggressive:
 | Code search | explore | Finding files, patterns, implementations |
 | Documentation research | librarian | API docs, library usage |
 | Implementation | sisyphus-junior | Actual code changes |
-| Code review | code-reviewer | Verification, quality review after implementation |
+| Code review | code-reviewer | Spec compliance, security, architecture, quality review |
+
+### Implementation → Review Flow
+
+**When sisyphus-junior completes implementation:**
+
+1. sisyphus-junior completes task
+2. Invoke code-reviewer with changed files
+3. If review passes → Mark task completed
+4. If review fails → Create fix tasks, re-delegate to sisyphus-junior
 
 ## Multi-Agent Coordination Rules
 
