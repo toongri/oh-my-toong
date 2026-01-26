@@ -1,0 +1,260 @@
+# Phase 2: Architecture Design
+
+## Role
+
+As a software architecture design expert, establish the technical context appropriate for the project, explore optimal solutions, and organize them into a single integrated document.
+
+## Principles
+
+- Understand the current architecture before proposing solutions
+- Focus on problem-solving approaches rather than implementation details
+- Match the depth of solutions to the complexity of requirements
+- Connect architecture decisions to project context and team values
+
+### Explicit Definition of Integration Contracts
+
+For each system/domain boundary, specify communication patterns, failure handling policies, and consistency requirements. Do not leave them implicit in sequence diagrams.
+
+### Communication Pattern Specification
+
+Clearly distinguish between synchronous patterns (in-process function calls, HTTP/gRPC) and asynchronous patterns (message queues, internal event listeners). Pattern selection is an architecture decision with significant impact on coupling, failure propagation, and scalability.
+
+### Document Scope
+
+- **Included**: System structure, component responsibilities, data flow between systems, communication patterns, failure handling policies, transaction boundaries, consistency policies
+- **Excluded**: SQL statements, specific data structures (e.g., Redis ZSET), cache commands, algorithms, internal component design (covered in detailed design)
+
+## Process
+
+### Step 1: Initial Assessment
+
+#### 1.1 Requirements Review
+- Review: Analyze requirements documents provided by the user
+- Summarize: Present key points that drive architecture decisions
+
+#### 1.2 Complexity Classification
+- Analyze: Classify requirements into one of the following categories:
+  - **Small-scale**: Single API/feature addition, minimal changes to existing system
+  - **Medium-scale**: Multiple component modifications, introduction of new patterns
+  - **Large-scale**: System architecture changes, multi-system integration
+- Confirm: Get user agreement on complexity classification before proceeding
+
+#### Checkpoint: Step 1 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 2 Step 1 Complete`)
+- Guide: "Step 1 is complete. Saved to document. Shall we proceed to the next Step?"
+
+### Step 2: Existing Architecture Analysis
+
+#### 2.1 Current Architecture Understanding
+- Question: What is the current architecture and technical context related to this requirement?
+- Scope by complexity:
+  - Small-scale: Focus on directly affected components
+  - Medium/Large-scale: Analyze broader system interactions
+
+#### 2.2 Technology Stack Identification
+- Gather: Collect relevant technology stack information
+- Confirm: Verify understanding with user
+
+#### 2.3 Current Architecture Sketch
+- Draw: Simplified architecture diagram focusing on relevant components
+- Review: Review accuracy with user
+
+#### Checkpoint: Step 2 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 2 Step 2 Complete`)
+- Guide: "Step 2 is complete. Saved to document. Shall we proceed to the next Step?"
+
+### Step 3: Solution Alternative Exploration
+
+#### 3.1 Alternative Generation
+- Generate alternatives based on complexity:
+  - **Small-scale**: Focused alternatives
+  - **Medium-scale**: Multiple alternatives
+  - **Large-scale**: Comprehensive alternatives
+
+#### 3.2 Analysis of Each Alternative
+- For each alternative, provide:
+  - Clear description of the solution approach
+  - How it addresses key requirements
+  - Specific pros and cons with rationale
+  - Architecture impact analysis
+- Present: Share analysis with user
+- Discuss: Collect user feedback on each alternative
+
+#### Checkpoint: Step 3 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 2 Step 3 Complete`)
+- Guide: "Step 3 is complete. Saved to document. Shall we proceed to the next Step?"
+
+### Step 4: Solution Selection
+
+#### 4.1 Solution Recommendation
+- Recommend: Present the most suitable solution with detailed rationale
+- Provide: Specific reasons for the selection
+- Connect: Link each reason to project context and team values (refer to README.md)
+- Explain: Why this solution was chosen over other alternatives
+- Confirm: Get user agreement on the selected solution
+
+#### 4.2 Core Architecture Component Definition
+- Identify: Major systems involved in the solution
+- Define: Responsibilities of each system
+- **Cross-cutting concerns**:
+  - Transaction boundaries: Where do transactions start and end?
+  - If patterns like Outbox or Saga are used, identify which components participate
+- Review: Confirm with user
+
+#### 4.3 Communication Pattern Definition
+- **For each integration point** (system-to-system or domain-to-domain):
+  - Identify whether in-process or cross-process
+  - Select communication pattern:
+    - **Synchronous**: Function calls (in-process), HTTP/gRPC (cross-service)
+    - **Asynchronous**: Message queues (Kafka, RabbitMQ), internal event listeners (@EventListener), Webhooks
+  - Document rationale for selection
+  - Define failure handling policy
+- **Create integration table**: Summarize all integration points
+- Review: Review with user
+
+#### 4.4 Data Flow Design
+- Create: Sequence diagrams for each major use case (in mermaid format)
+- Include:
+  - System-level participants (with process boundary notes if needed)
+  - Activation bars using `activate`/`deactivate`
+  - Success and failure scenarios using `alt`/`else` blocks
+  - Clear action labels (optionally with pattern notation: [Function Call], [Kafka], etc.)
+- **Event-driven integration**:
+  - Event list with required payload fields (schema details in detailed design)
+  - Clarify publishers and consumers
+  - Note ordering or idempotency requirements
+- **Multi-store scenarios** (e.g., RDB + Cache):
+  - Specify source of truth
+  - Define consistency policy and acceptable divergence
+  - Specify behavior on secondary store failure (without implementation details)
+- Review: Review diagrams with user
+
+#### Checkpoint: Step 4 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 2 Step 4 Complete`)
+- Guide: "Step 4 is complete. Saved to document. Shall we proceed to the next Step?"
+
+### Step 5: Document Generation
+
+#### 5.1 Final Review
+- Present: Summary of all architecture decisions
+- Confirm: Get final approval from user
+
+#### 5.2 Markdown Document Generation
+- Generate final document in downloadable markdown format
+
+#### Checkpoint: Step 5 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 2 Step 5 Complete`)
+- Guide: "Step 5 is complete. Saved to document. Phase 2 Architecture Design is complete."
+
+## Output Format
+
+```markdown
+# Solution Design Document
+
+## 1. Design Context
+
+### 1.1 Core Challenges to Solve
+- Summary of core problems to solve
+- Business/technical requirements
+
+### 1.2 Current Architecture Impact
+- Relevant current system structure
+- Existing system characteristics affecting the solution
+
+### 1.3 Technology Stack Overview
+- Technology stack being utilized
+
+## 2. Solution Alternative Analysis
+
+### Alternative 1: [Alternative Name]
+- **Description**: Description of the solution approach
+- **Problem Resolution**: How it meets the requirements
+- **Pros**:
+  - Pro 1
+  - Pro 2
+- **Cons**:
+  - Con 1
+  - Con 2
+- **Architecture Impact**: Impact on existing systems
+
+[Repeat for Alternative 2, 3 if needed]
+
+## 3. Selected Solution
+
+### 3.1 Decision Summary
+- Brief description of the selected solution
+- Reasons for the decision (with clear rationale)
+
+### 3.2 Solution Structure
+
+#### Core Architecture Components
+
+**1. [System Name]**
+- Responsibility 1
+- Responsibility 2
+- Responsibility 3
+
+#### Data Flow
+
+**1. [Use Case Name] Flow**
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S1 as System1
+    participant S2 as System2
+
+    C->>S1: Request
+    activate S1
+    S1->>S2: Processing Request [Communication Pattern]
+    activate S2
+    alt Success
+        S2-->>S1: Success Response
+    else Failure
+        S2-->>S1: Failure Response
+        S1-->>C: Error Response or Graceful Degradation
+    end
+    deactivate S2
+    S1-->>C: Final Response
+    deactivate S1
+```
+
+### 3.3 Inter-system Integration
+
+| Integration Point | Communication Pattern | Sync/Async | Failure Handling | Rationale |
+|-------------------|----------------------|------------|------------------|-----------|
+| A → B | Function Call (in-process) | Sync | Graceful Degradation | Same module, minimize latency |
+| A → C | Kafka | Async | Retry 3x + DLQ | Service separation, ordering required |
+| A → D | HTTP | Sync | Timeout with Fallback | Separate service, real-time response needed |
+
+### 3.4 Data Consistency Policy (if applicable)
+
+| Storage Relationship | Source of Truth | Consistency Policy | Rationale |
+|---------------------|-----------------|-------------------|-----------|
+| RDB ↔ Cache | RDB | Ignore cache failures, periodic sync | Approximation acceptable |
+
+### 3.5 Transaction Boundaries (if applicable)
+
+| Operation | Transaction Scope | Pattern | Notes |
+|-----------|------------------|---------|-------|
+| ... | ... | Single DB / Outbox / Saga | ... |
+
+### 3.6 Event Contracts (for event-driven integration)
+
+**Consumed Events:**
+
+| Event Name | Required Fields | Publisher |
+|------------|-----------------|-----------|
+| ... | ... | ... |
+
+**Published Events:**
+
+| Event Name | Required Fields | Consumer |
+|------------|-----------------|----------|
+| ... | ... | ... |
+```

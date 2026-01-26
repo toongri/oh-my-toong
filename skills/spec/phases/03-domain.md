@@ -1,0 +1,397 @@
+# Phase 3: Domain Modeling (DDD)
+
+## Role
+
+As a Domain-Driven Design (DDD) expert, systematically design the project's domain model and organize it into a single unified document.
+
+## Design Philosophy
+
+### Rich Domain Model
+
+Business rules belong inside domain objects, not services. Domain models collaborate to express business logic, and the service layer should read as simple procedural flow - orchestration only, no business decisions.
+
+Domain logic that doesn't naturally belong to an Entity or Value Object is extracted as a **Doer** (performs action) or **Policy** (encapsulates rules). Use Policy when logic applies to multiple entities, has multiple variations, or requires external context.
+
+**When to use Policy:** When multiple calculation strategies exist (e.g., discount types) and you want to add new variations without modifying existing code (OCP).
+
+```kotlin
+interface DiscountPolicy {
+    fun supports(coupon: Coupon): Boolean
+    fun calculate(orderAmount: Money, coupon: Coupon): Money
+}
+
+@Component
+class RatePolicy : DiscountPolicy {
+    override fun supports(coupon: Coupon): Boolean =
+        coupon.discountAmount.type == DiscountType.RATE
+
+    override fun calculate(orderAmount: Money, coupon: Coupon): Money =
+        orderAmount.applyPercentage(coupon.discountAmount.value)
+            .min(orderAmount)
+            .round(0)
+}
+
+@Component
+class DiscountPolicyResolver(private val policies: List<DiscountPolicy>) {
+    fun resolve(coupon: Coupon): DiscountPolicy =
+        policies.find { it.supports(coupon) }
+            ?: throw CoreException(ErrorType.INTERNAL_ERROR, "...")
+}
+```
+
+### Design by Contract
+
+Invariants are validated in the constructor - invalid objects should never exist. Public domain methods should have clear preconditions and postconditions, documented so the team can understand the contract.
+
+```kotlin
+class Money(val amount: BigDecimal, val currency: Currency) {
+    init {
+        require(amount >= BigDecimal.ZERO) { "Amount cannot be negative" }
+    }
+}
+```
+
+### Business Result as Types
+
+Use sealed classes when the caller needs to branch based on business results beyond simple success/failure. Exceptions are used for situations that should completely halt execution.
+
+```kotlin
+sealed class WithdrawResult {
+    data class Success(val newBalance: Money) : WithdrawResult()
+    data class InsufficientFunds(val available: Money, val requested: Money) : WithdrawResult()
+    data class AccountLocked(val reason: String) : WithdrawResult()
+}
+```
+
+### Aggregate Design
+
+Objects with the same lifecycle belong in the same Aggregate. References between different Aggregates must be by ID only - use ID reference when the referenced object can change independently or has a different owner. Repository exists only for Aggregate Root. When boundaries are unclear, prefer smaller Aggregates.
+
+```kotlin
+// Aggregate Root
+class Order(
+    val id: OrderId,
+    val customerId: CustomerId,  // ID reference: Customer has different lifecycle
+    val items: OrderItems        // First-class collection VO
+) {
+    fun addItem(productId: ProductId, quantity: Int, price: Money): Order { ... }
+    fun totalPrice(): Money = items.totalPrice()
+}
+
+// First-class collection VO (same lifecycle as Order)
+class OrderItems(private val items: List<OrderItem>) {
+    fun totalPrice(): Money = items.sumOf { it.subtotal() }
+    fun hasItem(productId: ProductId): Boolean = items.any { it.productId == productId }
+}
+
+// Entity within the same Aggregate (same lifecycle as Order)
+class OrderItem(
+    val productId: ProductId,  // ID reference: Product has different lifecycle
+    val quantity: Int,
+    val priceSnapshot: Money
+) {
+    fun subtotal(): Money = priceSnapshot * quantity
+}
+```
+
+### Value Object Promotion
+
+Create a first-class collection when a collection has business logic beyond simple iteration (validation, calculation, lookup). Promote a primitive to VO when a value has multiple modification cases, formatting rules, or validation logic.
+
+```kotlin
+class PhoneNumber(val value: String) {
+    init { require(isValidFormat(value)) }
+    fun format(): String = ...
+    fun countryCode(): String = ...
+}
+```
+
+### Event Design Principles
+
+Events decouple publishers and consumers. Design events to maintain this decoupling.
+
+**Events describe what happened, not what should be done.** Event names should be past tense describing a fact (OrderCreated, PaymentCompleted), not commands for consumers (SendNotification, UpdateInventory). Publishers don't know and don't care what consumers will do.
+
+**Design for unknown consumers.** Don't tailor event payloads to specific consumer needs. Include only the minimal information describing what happened. If consumers need more data, they should query using IDs from the payload.
+
+**Publishers and consumers have separate lifecycles.** They can be developed, tested, and deployed independently. The event payload is the contract connecting them - once published, payload structure changes should consider versioning.
+
+```kotlin
+// Good: Describes what happened, minimal payload
+data class OrderCreatedEvent(
+    val orderId: Long,
+    val customerId: Long,
+    val totalAmount: Long,
+    val occuredAt: Instant
+)
+
+// Bad: Designed for specific consumer, includes unnecessary data
+data class OrderCreatedEvent(
+    val orderId: Long,
+    val customerEmail: String,      // Only notification consumer needs this
+    val customerName: String,       // Only notification consumer needs this
+    val notificationTemplate: String // Consumer's concern leaked into event
+)
+```
+
+### Practical Constraints (JPA)
+
+JPA requirements take precedence over pure domain model ideals when they conflict. Acceptable compromises: `protected` no-arg constructor, mutable `var` for JPA-managed fields, `@Embedded` annotation for Value Objects.
+
+## Principles
+
+- Ensure each piece of information appears in exactly one place
+- Focus on pure domain logic: document business rules and invariants, exclude implementation details
+- Keep documents concise and easy for team members to review
+- Keep diagrams clean with concise notes focused only on business rules
+- Use class diagrams as the single source of truth for structure and responsibilities
+
+### Repository/Port Interfaces are WHAT, not HOW
+
+Define operations in business terms (e.g., "atomically accumulate count", "retrieve top N by score"). Exclude implementation details (e.g., "INSERT ... ON CONFLICT", "ZREVRANGE"). Implementation is covered in detailed design.
+
+### Document Scope
+
+- **Include**: Domain objects, aggregates, business rules, invariants, state transitions, domain events, repository/port interfaces (business meaning only)
+- **Exclude**: SQL statements, cache commands, framework annotations, batch strategies, and other technology-specific implementations (covered in detailed design)
+
+## Process
+
+### Step 1: Context Review
+
+#### 1.1 Review Input Documents
+- Review: Analyze requirements and architecture documents provided by user
+- Summarize: Present key points relevant to domain modeling
+
+#### 1.2 Identify Modeling Scope
+- Identify: Define domain modeling scope based on input documents
+- Confirm: Get user agreement on scope
+
+#### Checkpoint: Step 1 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 1 Complete`)
+- Guidance: "Step 1 is complete. Saved to document. Shall we proceed to the next Step?"
+
+### Step 2: Class Diagram Design
+
+#### 2.1 Identify Domain Objects
+- Identify: Core domain entities, value objects, enums
+- Classify: Categorize each object type (refer to design philosophy criteria)
+- **For each Value Object**: Identify invariants that must always hold (become constructor validations)
+- Review: Discuss with user
+
+#### 2.2 Define Aggregate Boundaries
+- Analyze: Define aggregate boundaries and aggregate roots (refer to design philosophy: same lifecycle → same Aggregate)
+- Explain: Rationale for why aggregates are separated
+- Confirm: Get user agreement
+
+#### 2.3 Define Relationships
+- Identify: Relationships between objects with appropriate labels:
+  - Direct reference: enums and owned value objects
+  - Indirect reference via ID: cross-aggregate references
+  - Composition: embedded value objects
+- Explain: Why certain references are indirect
+- Review: Discuss with user
+
+#### 2.4 Create Class Diagram
+- Draw: Mermaid class diagram with aggregate structure
+- Include: Brief description of structure and responsibilities
+- **Repository/Port interfaces**: Define in business terms only (what they do, not how)
+- Review: Review diagram with user
+
+#### Checkpoint: Step 2 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 2 Complete`)
+- Guidance: "Step 2 is complete. Saved to document. Shall we proceed to the next Step?"
+
+### Step 3: Define Domain Rules
+
+#### 3.1 Identify Business Rules
+- Identify: Core business logic that defines domain behavior:
+  - Business constraints and validation rules
+  - Calculation algorithms with concrete examples
+  - State transition rules and conditions
+  - Invariants that must always be true
+  - Error conditions and exception messages
+- **For Domain Services with multiple methods**: Document relationships between methods and when to use each method
+- Discuss: Review completeness with user
+
+#### 3.2 Organize Rules by Category
+- Organize: Group rules by business category (e.g., issuance rules, usage rules, calculation rules)
+- Format: Use table format for calculation logic with clear examples
+- Confirm: Get user agreement on categorization
+
+#### Checkpoint: Step 3 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 3 Complete`)
+- Guidance: "Step 3 is complete. Saved to document. Shall we proceed to the next Step?"
+
+### Step 4: Create State Diagram
+
+#### 4.1 Assess Necessity
+- Analyze: Determine if there are entities with significant state transitions
+- Present: Explain whether state diagram is needed with rationale
+- Decide: Skip to Step 5 if no significant state transitions
+- Confirm: Get user agreement
+
+#### 4.2 Define States and Transitions (if proceeding)
+- Identify: States, transition conditions, side effects, error cases
+- Review: Discuss with user
+
+#### 4.3 Create State Diagram (if proceeding)
+- Draw: Mermaid state diagram with concise business rule notes
+- Create: State transition rules table (current state, event, next state, condition, side effects)
+- Review: Review diagram with user
+
+#### Checkpoint: Step 4 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 4 Complete`)
+- Guidance: "Step 4 is complete. Saved to document. Shall we proceed to the next Step?"
+
+### Step 5: Identify Domain Events
+
+#### 5.1 Assess Necessity
+- Analyze: Determine if domain events are needed
+- Apply: YAGNI principle - if synchronous processing suffices, events may not be needed
+- Present: Explain whether events are needed with rationale
+- Decide: If events are not needed, document the reason and skip to Step 6
+- Confirm: Get user agreement
+
+#### 5.2 Define Domain Events (if proceeding)
+- Identify: Significant business events occurring in the domain
+- Define: Event name, trigger, payload
+- **Separation of Concerns**: Define publishers and consumers independently
+  - Publisher: Which aggregate publishes? What triggers the event?
+  - Consumer: Which component handles it? What action is taken?
+  - These are separate design decisions that should not influence each other
+- Review: Discuss with user
+
+#### 5.3 Document Future Events (if not proceeding)
+- List: Potential future events that may be introduced later
+- Confirm: Get user agreement
+
+#### Checkpoint: Step 5 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 5 Complete`)
+- Guidance: "Step 5 is complete. Saved to document. Shall we proceed to the next Step?"
+
+### Step 6: Document Generation
+
+#### 6.1 Final Review
+- Present: Summary of all domain modeling decisions
+- Confirm: Get final approval from user
+
+#### 6.2 Generate Markdown Document
+- Generate final document in downloadable markdown format
+
+#### Checkpoint: Step 6 Complete
+- Save: Save current content to `.omt/specs/{feature-name}.md`
+- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 6 Complete`)
+- Guidance: "Step 6 is complete. Saved to document. Phase 3 Domain Modeling is complete."
+
+## Output Format
+
+```markdown
+# Domain Modeling Document
+
+## 1. Class Diagram
+
+```mermaid
+classDiagram
+    class AggregateRoot {
+        ...
+    }
+```
+
+### Key Structure
+- Aggregate composition and responsibilities
+- Design intent and reference relationship explanation
+
+### Value Object Invariants
+
+| Value Object | Invariant | Notes |
+|-------------|-----------|-------|
+| Money | amount >= 0 | Constructor validation |
+| ... | ... | ... |
+
+### Repository/Port Interfaces
+
+Define operations needed from domain perspective in business terms. For implementation details (SQL, cache commands, etc.), refer to detailed-design.
+
+**[Repository/Port Name]**
+
+| Method | Business Meaning |
+|--------|-----------------|
+| save(entity) | Save entity |
+| findById(id) | Find by ID |
+| ... | ... |
+
+## 2. Domain Rules
+
+### 2.1 [Rule Category Name]
+- Rule 1
+- Rule 2
+
+### 2.2 [Rule Category Name]
+- Rule 1
+- Rule 2
+
+[Use table format for calculation logic]
+
+| Condition | Calculation Method | Example |
+|-----------|-------------------|---------|
+| ... | ... | ... |
+
+### 2.X Domain Service Usage Rules (if multiple methods exist)
+
+**[Service Name] Method Relationships**
+
+| Situation | Method to Use | Description |
+|-----------|--------------|-------------|
+| ... | ... | ... |
+
+## 3. State Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> State1
+    State1 --> State2: event
+```
+
+### State Transition Rules
+
+| Current State | Event | Next State | Transition Condition | Side Effects |
+|--------------|-------|------------|---------------------|--------------|
+| ... | ... | ... | ... | ... |
+
+## 4. Domain Events
+
+### Current Usage Status
+[Used/Not used with clear reasoning]
+
+### Event List (if used)
+
+**Publisher Side**:
+
+| Event Name | Publisher | Trigger Condition |
+|------------|-----------|------------------|
+| OrderCreatedEvent | OrderService | After successful order creation |
+
+**Consumer Side**:
+
+| Event Name | Consumer | Processing Content |
+|------------|----------|-------------------|
+| OrderCreatedEvent | NotificationEventListener | Delegates to NotificationService.sendOrderConfirmation() |
+
+**Payload**:
+
+| Event Name | Fields | Description |
+|------------|--------|-------------|
+| OrderCreatedEvent | orderId, customerId, totalAmount, occuredAt | Order identification and basic information |
+
+Note: Publishing and consuming can be developed/tested/deployed independently. The event payload is the contract connecting them.
+
+### Potential Future Events (if not used)
+- Event 1: Timing/conditions for introduction
+- Event 2: Timing/conditions for introduction
+```
