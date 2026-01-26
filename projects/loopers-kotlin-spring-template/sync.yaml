@@ -9,7 +9,6 @@ agents:
     - metis
     - momus
     - oracle
-    - prometheus
     - component: sisyphus-junior
       add-skills:
         - testing

@@ -9,7 +9,6 @@ agents:
     - metis
     - momus
     - oracle
-    - prometheus
     - sisyphus-junior
 
 commands:
