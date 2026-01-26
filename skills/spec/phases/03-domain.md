@@ -16,28 +16,19 @@ Domain logic that doesn't naturally belong to an Entity or Value Object is extra
 
 **When to use Policy:** When multiple calculation strategies exist (e.g., discount types) and you want to add new variations without modifying existing code (OCP).
 
-```kotlin
-interface DiscountPolicy {
-    fun supports(coupon: Coupon): Boolean
-    fun calculate(orderAmount: Money, coupon: Coupon): Money
-}
+**Domain Collaboration:** Design domain models to collaborate with each other through unidirectional dependencies. The service layer should only orchestrate - fetch, delegate, persist - while domain objects handle the actual business logic.
 
-@Component
-class RatePolicy : DiscountPolicy {
-    override fun supports(coupon: Coupon): Boolean =
-        coupon.discountAmount.type == DiscountType.RATE
+```
+// Service: orchestration only
+payResult = paymentClient.pay(orderId, totalAmount)
+payment.complete(payResult)
+order.markPaid()
 
-    override fun calculate(orderAmount: Money, coupon: Coupon): Money =
-        orderAmount.applyPercentage(coupon.discountAmount.value)
-            .min(orderAmount)
-            .round(0)
-}
-
-@Component
-class DiscountPolicyResolver(private val policies: List<DiscountPolicy>) {
-    fun resolve(coupon: Coupon): DiscountPolicy =
-        policies.find { it.supports(coupon) }
-            ?: throw CoreException(ErrorType.INTERNAL_ERROR, "...")
+// NOT this: business logic in service
+if (payResult.isSuccess()) {
+    payment.status = COMPLETED
+    order.status = PAID
+    // business rules scattered in service...
 }
 ```
 
@@ -45,67 +36,46 @@ class DiscountPolicyResolver(private val policies: List<DiscountPolicy>) {
 
 Invariants are validated in the constructor - invalid objects should never exist. Public domain methods should have clear preconditions and postconditions, documented so the team can understand the contract.
 
-```kotlin
-class Money(val amount: BigDecimal, val currency: Currency) {
-    init {
-        require(amount >= BigDecimal.ZERO) { "Amount cannot be negative" }
-    }
-}
 ```
-
-### Business Result as Types
-
-Use sealed classes when the caller needs to branch based on business results beyond simple success/failure. Exceptions are used for situations that should completely halt execution.
-
-```kotlin
-sealed class WithdrawResult {
-    data class Success(val newBalance: Money) : WithdrawResult()
-    data class InsufficientFunds(val available: Money, val requested: Money) : WithdrawResult()
-    data class AccountLocked(val reason: String) : WithdrawResult()
-}
+Invariant: Money.amount >= 0
 ```
 
 ### Aggregate Design
 
 Objects with the same lifecycle belong in the same Aggregate. References between different Aggregates must be by ID only - use ID reference when the referenced object can change independently or has a different owner. Repository exists only for Aggregate Root. When boundaries are unclear, prefer smaller Aggregates.
 
-```kotlin
-// Aggregate Root
-class Order(
-    val id: OrderId,
-    val customerId: CustomerId,  // ID reference: Customer has different lifecycle
-    val items: OrderItems        // First-class collection VO
-) {
-    fun addItem(productId: ProductId, quantity: Int, price: Money): Order { ... }
-    fun totalPrice(): Money = items.totalPrice()
-}
-
-// First-class collection VO (same lifecycle as Order)
-class OrderItems(private val items: List<OrderItem>) {
-    fun totalPrice(): Money = items.sumOf { it.subtotal() }
-    fun hasItem(productId: ProductId): Boolean = items.any { it.productId == productId }
-}
-
-// Entity within the same Aggregate (same lifecycle as Order)
-class OrderItem(
-    val productId: ProductId,  // ID reference: Product has different lifecycle
-    val quantity: Int,
-    val priceSnapshot: Money
-) {
-    fun subtotal(): Money = priceSnapshot * quantity
-}
+```mermaid
+classDiagram
+    class Order {
+        +OrderId id
+        +CustomerId customerId [ID reference]
+        +OrderItems items
+        +addItem(productId, quantity, price)
+        +totalPrice(): Money
+    }
+    class OrderItems {
+        -List~OrderItem~ items
+        +totalPrice(): Money
+        +hasItem(productId): Boolean
+    }
+    class OrderItem {
+        +ProductId productId [ID reference]
+        +Int quantity
+        +Money priceSnapshot
+        +subtotal(): Money
+    }
+    Order *-- OrderItems : contains
+    OrderItems *-- OrderItem : contains
 ```
 
 ### Value Object Promotion
 
 Create a first-class collection when a collection has business logic beyond simple iteration (validation, calculation, lookup). Promote a primitive to VO when a value has multiple modification cases, formatting rules, or validation logic.
 
-```kotlin
-class PhoneNumber(val value: String) {
-    init { require(isValidFormat(value)) }
-    fun format(): String = ...
-    fun countryCode(): String = ...
-}
+```
+PhoneNumber
+  - Invariant: valid format
+  - Operations: format(), countryCode()
 ```
 
 ### Event Design Principles
@@ -118,27 +88,16 @@ Events decouple publishers and consumers. Design events to maintain this decoupl
 
 **Publishers and consumers have separate lifecycles.** They can be developed, tested, and deployed independently. The event payload is the contract connecting them - once published, payload structure changes should consider versioning.
 
-```kotlin
-// Good: Describes what happened, minimal payload
-data class OrderCreatedEvent(
-    val orderId: Long,
-    val customerId: Long,
-    val totalAmount: Long,
-    val occuredAt: Instant
-)
-
-// Bad: Designed for specific consumer, includes unnecessary data
-data class OrderCreatedEvent(
-    val orderId: Long,
-    val customerEmail: String,      // Only notification consumer needs this
-    val customerName: String,       // Only notification consumer needs this
-    val notificationTemplate: String // Consumer's concern leaked into event
-)
+**Good example** - describes what happened with minimal payload:
+```
+OrderCreatedEvent
+  - orderId: Long
+  - customerId: Long
+  - totalAmount: Long
+  - occurredAt: Instant
 ```
 
-### Practical Constraints (JPA)
-
-JPA requirements take precedence over pure domain model ideals when they conflict. Acceptable compromises: `protected` no-arg constructor, mutable `var` for JPA-managed fields, `@Embedded` annotation for Value Objects.
+**Bad example** - designed for specific consumer with unnecessary data (customerEmail, customerName, notificationTemplate leaked from consumer's concerns).
 
 ## Principles
 
