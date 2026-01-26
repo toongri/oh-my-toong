@@ -48,24 +48,6 @@ PROJECT_ROOT=$(get_project_root "$DIRECTORY")
 
 MESSAGES=""
 
-# Check for active ultrawork state (session-specific)
-if [ -f "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state-${SESSION_ID}.json" ] || [ -f "$HOME/.claude/ultrawork-state-${SESSION_ID}.json" ]; then
-  if [ -f "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state-${SESSION_ID}.json" ]; then
-    ULTRAWORK_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ultrawork-state-${SESSION_ID}.json" 2>/dev/null)
-  else
-    ULTRAWORK_STATE=$(cat "$HOME/.claude/ultrawork-state-${SESSION_ID}.json" 2>/dev/null)
-  fi
-
-  if command -v jq &> /dev/null; then
-    IS_ACTIVE=$(echo "$ULTRAWORK_STATE" | jq -r '.active // false' 2>/dev/null)
-    if [ "$IS_ACTIVE" = "true" ]; then
-      STARTED_AT=$(echo "$ULTRAWORK_STATE" | jq -r '.started_at // ""' 2>/dev/null)
-      PROMPT=$(echo "$ULTRAWORK_STATE" | jq -r '.original_prompt // ""' 2>/dev/null)
-      MESSAGES="$MESSAGES<session-restore>\n\n[ULTRAWORK MODE RESTORED]\n\nYou have an active ultrawork session from $STARTED_AT.\nOriginal task: $PROMPT\n\nContinue working in ultrawork mode until all tasks are complete.\n\n</session-restore>\n\n---\n\n"
-    fi
-  fi
-fi
-
 # Check for active ralph loop state (session-specific)
 if [ -f "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" ]; then
   RALPH_STATE=$(cat "$PROJECT_ROOT/.claude/sisyphus/ralph-state-${SESSION_ID}.json" 2>/dev/null)

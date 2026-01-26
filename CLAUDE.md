@@ -36,7 +36,7 @@ oh-my-toong/
 
 ### Hooks
 
-- **session-start.sh**: Restores persistent mode states (ultrawork, ralph-loop, incomplete todos)
+- **session-start.sh**: Restores persistent mode states (ralph-loop, incomplete todos)
 - **keyword-detector.sh**: Detects keywords (ultrawork/uw, think, search, analyze) and injects mode context
 - **persistent-mode.sh**: Prevents stopping when work remains incomplete (Stop hook)
 - **pre-tool-enforcer.sh** / **post-tool-verifier.sh**: Tool execution enforcement
@@ -45,8 +45,7 @@ oh-my-toong/
 
 **Ultrawork Mode** (`ultrawork`, `ulw`, `uw` keywords):
 - Maximum precision mode with parallel agent utilization
-- Creates state file at `.claude/sisyphus/ultrawork-state.json`
-- Enforces completion via persistent-mode hook
+- Activated via keyword detection (1-time context injection per message)
 
 **Ralph Loop**:
 - Iterative completion enforcement with oracle verification
