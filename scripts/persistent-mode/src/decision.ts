@@ -129,13 +129,16 @@ export function makeDecision(context: DecisionContext): HookOutput {
       return formatContinueOutput();
     }
 
-    // 4. Tasks complete + Oracle not approved/rejected -> block (iteration++)
-    const newIteration = ralphState.iteration + 1;
+    // 4. Tasks complete + Oracle not approved -> block
+    // Only increment iteration if Oracle was actually called and rejected
+    // "Oracle not called yet" scenario should preserve iteration count
     const oracleFeedback = ralphState.oracle_feedback || [];
+    let newIteration = ralphState.iteration;
 
-    // Capture rejection feedback if present
+    // Capture rejection feedback if present and increment iteration
     if (transcript.oracleRejectionFeedback) {
       oracleFeedback.push(transcript.oracleRejectionFeedback);
+      newIteration = ralphState.iteration + 1;
     }
 
     // Update state

@@ -66,11 +66,12 @@ describe('makeDecision', () => {
 
       expect(result.decision).toBe('block');
       expect(result.reason).toContain('<ralph-loop-continuation>');
-      expect(result.reason).toContain('ITERATION 2/10');
+      // Iteration stays at 1 because Oracle not called yet (no rejection feedback)
+      expect(result.reason).toContain('ITERATION 1/10');
       expect(result.reason).toContain('Test task');
     });
 
-    it('should increment iteration in ralph state when blocking', async () => {
+    it('should preserve iteration when blocking without oracle rejection (Oracle not called)', async () => {
       const ralphState = {
         active: true,
         iteration: 3,
@@ -84,10 +85,10 @@ describe('makeDecision', () => {
 
       makeDecision(context);
 
-      // Read state file and check iteration was incremented
+      // Iteration should NOT increment - just a reminder to call Oracle
       const { readFileSync } = await import('fs');
       const updatedState = JSON.parse(readFileSync(join(omtDir, 'ralph-state-test-session.json'), 'utf8'));
-      expect(updatedState.iteration).toBe(4);
+      expect(updatedState.iteration).toBe(3);
     });
 
     it('should allow stop when max iterations reached', async () => {
@@ -299,7 +300,7 @@ describe('makeDecision', () => {
         expect(result).toEqual({ continue: true });
       });
 
-      it('should block when tasks complete but Oracle not approved', async () => {
+      it('should block when tasks complete but Oracle not called yet', async () => {
         const ralphState = {
           active: true,
           iteration: 3,
@@ -309,7 +310,7 @@ describe('makeDecision', () => {
         };
         await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
 
-        // Tasks complete but no oracle approval
+        // Tasks complete but no oracle approval (Oracle not called yet)
         const context = createContext({ incompleteTodoCount: 0 });
 
         const result = makeDecision(context);
@@ -317,6 +318,27 @@ describe('makeDecision', () => {
         // Should block because Oracle hasn't approved yet
         expect(result.decision).toBe('block');
         expect(result.reason).toContain('<ralph-loop-continuation>');
+      });
+
+      it('should NOT increment iteration when Oracle not called yet (no rejection feedback)', async () => {
+        const ralphState = {
+          active: true,
+          iteration: 3,
+          max_iterations: 10,
+          completion_promise: 'DONE',
+          prompt: 'Test task',
+        };
+        await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+
+        // Tasks complete, Oracle not called yet (no transcript with rejection)
+        const context = createContext({ incompleteTodoCount: 0 });
+
+        makeDecision(context);
+
+        // Iteration should NOT increment - just a reminder to call Oracle
+        const { readFileSync } = await import('fs');
+        const updatedState = JSON.parse(readFileSync(join(omtDir, 'ralph-state-test-session.json'), 'utf8'));
+        expect(updatedState.iteration).toBe(3); // Should stay the same
       });
 
       it('should capture Oracle rejection feedback when tasks complete but Oracle rejected', async () => {
@@ -342,6 +364,31 @@ describe('makeDecision', () => {
         const updatedState = JSON.parse(readFileSync(join(omtDir, 'ralph-state-test-session.json'), 'utf8'));
         expect(updatedState.oracle_feedback).toContain('Code needs cleanup');
         expect(updatedState.iteration).toBe(4);
+      });
+
+      it('should INCREMENT iteration when Oracle was called AND rejected', async () => {
+        const ralphState = {
+          active: true,
+          iteration: 5,
+          max_iterations: 10,
+          completion_promise: 'DONE',
+          prompt: 'Test task',
+          oracle_feedback: [],
+        };
+        await writeFile(join(omtDir, 'ralph-state-test-session.json'), JSON.stringify(ralphState));
+
+        // Tasks complete, Oracle called but rejected
+        const transcriptPath = join(testDir, 'oracle-rejected-transcript2.jsonl');
+        await writeFile(transcriptPath, 'Oracle rejected because: issue: Missing documentation');
+
+        const context = createContext({ transcriptPath, incompleteTodoCount: 0 });
+
+        makeDecision(context);
+
+        // Iteration SHOULD increment because Oracle was called and rejected
+        const { readFileSync } = await import('fs');
+        const updatedState = JSON.parse(readFileSync(join(omtDir, 'ralph-state-test-session.json'), 'utf8'));
+        expect(updatedState.iteration).toBe(6);
       });
     });
   });

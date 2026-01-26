@@ -153,45 +153,13 @@ digraph spec_workflow {
 | 04-Detailed Design | Performance optimization, concurrency, state management | Implementation is obvious | Documented: "Standard CRUD, no concurrency concerns" |
 | 05-API Design | Externally exposed APIs, client integration | Only internal module communication | Confirmed: Internal use only, no external contracts |
 
-## Subagent Utilization Guide
+## Subagent Selection Guide
 
-Utilize the following subagents appropriately in each phase.
-
-### oracle (Architecture/Technical Consultation)
-
-**When to Use:**
-- When technical decisions are needed (e.g., "Redis vs PostgreSQL for caching")
-- When impact analysis of existing architecture is needed
-- When trade-off analysis is needed
-
-**Example Request:**
-```
-Question for oracle: "What impact would introducing event-driven processing have on the current monolithic structure?"
-```
-
-### librarian (External Documentation/Best Practices Research)
-
-**When to Use:**
-- When external library/framework usage guidance is needed
-- When industry best practices need to be referenced
-- When official documentation of a specific technology needs to be verified
-
-**Example Request:**
-```
-Request for librarian: "Research how to implement Aggregate Root pattern in Spring Data JPA"
-```
-
-### explore (Existing Codebase Pattern Exploration)
-
-**When to Use:**
-- When existing project implementation patterns need to be understood
-- When checking how similar features are implemented
-- When project conventions need to be understood
-
-**Example Request:**
-```
-Request for explore: "Find how the Repository pattern is implemented in the current project"
-```
+| Need | Agent | When to Use |
+|------|-------|-------------|
+| Technical decisions, trade-off analysis | oracle | Architecture impact, technology choices, design decisions |
+| External documentation, best practices | librarian | Library usage, framework patterns, official docs |
+| Existing codebase patterns | explore | Project conventions, similar implementations, current architecture |
 
 ## Interaction Pattern
 

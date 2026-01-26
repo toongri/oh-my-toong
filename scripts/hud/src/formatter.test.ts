@@ -78,13 +78,14 @@ describe('formatStatusLine', () => {
   });
 
   describe('ralph oracle feedback', () => {
-    it('shows feedback count when oracle_feedback has items', () => {
+    it('does not show feedback count even when oracle_feedback has items', () => {
       const data: HudData = {
         ...emptyData,
         ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, oracle_feedback: ['feedback1', 'feedback2'] }),
       };
       const result = formatStatusLine(data);
-      expect(result).toMatch(/ralph:3\/10.*fb:2/);
+      expect(result).toContain('ralph:3/10');
+      expect(result).not.toContain('fb:');
     });
 
     it('does not show feedback when oracle_feedback is empty', () => {
@@ -469,13 +470,14 @@ describe('formatStatusLineV2', () => {
       expect(result).not.toContain('ralph');
     });
 
-    it('shows feedback count when oracle_feedback has items', () => {
+    it('does not show feedback count even when oracle_feedback has items', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, oracle_feedback: ['feedback1'] }),
       };
       const result = formatStatusLineV2(data);
-      expect(result).toMatch(/ralph:3\/10.*fb:1/);
+      expect(result).toContain('ralph:3/10');
+      expect(result).not.toContain('fb:');
     });
   });
 
@@ -757,7 +759,7 @@ describe('formatStatusLineV2', () => {
       expect(result).not.toContain('ralph:3/10+');
     });
 
-    it('shows feedback count alongside ralph iteration', () => {
+    it('does not show feedback count alongside ralph iteration', () => {
       const data: HudDataV2 = {
         ...emptyDataV2,
         ralph: createRalphState({ active: true, iteration: 3, max_iterations: 10, oracle_feedback: ['feedback1'] }),
@@ -765,7 +767,7 @@ describe('formatStatusLineV2', () => {
       const result = formatStatusLineV2(data);
       expect(result).toContain('ralph:3/10');
       expect(result).not.toContain('ralph:3/10+');
-      expect(result).toContain('fb:1');
+      expect(result).not.toContain('fb:');
     });
   });
 });

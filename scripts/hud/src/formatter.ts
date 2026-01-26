@@ -22,16 +22,10 @@ export function formatStatusLine(data: HudData): string {
   // Always show prefix
   parts.push(colorize('[OMT]', ANSI.bold));
 
-  // Ralph status with oracle feedback count
+  // Ralph status
   if (data.ralph?.active) {
     const color = getRalphColor(data.ralph.iteration, data.ralph.max_iterations);
-    let ralphText = `ralph:${data.ralph.iteration}/${data.ralph.max_iterations}`;
-
-    // Add oracle feedback count if any
-    if (data.ralph.oracle_feedback && data.ralph.oracle_feedback.length > 0) {
-      ralphText += ` fb:${data.ralph.oracle_feedback.length}`;
-    }
-
+    const ralphText = `ralph:${data.ralph.iteration}/${data.ralph.max_iterations}`;
     parts.push(colorize(ralphText, color));
   }
 
@@ -143,11 +137,7 @@ export function formatStatusLineV2(data: HudDataV2): string {
   // Line 2: Ralph (only when active)
   if (data.ralph?.active) {
     const color = getRalphColor(data.ralph.iteration, data.ralph.max_iterations);
-    let text = `ralph:${data.ralph.iteration}/${data.ralph.max_iterations}`;
-    // Add oracle feedback count if any
-    if (data.ralph.oracle_feedback && data.ralph.oracle_feedback.length > 0) {
-      text += ` fb:${data.ralph.oracle_feedback.length}`;
-    }
+    const text = `ralph:${data.ralph.iteration}/${data.ralph.max_iterations}`;
     line2Parts.push(colorize(text, color));
   }
 
