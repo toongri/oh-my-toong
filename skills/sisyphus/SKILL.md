@@ -153,6 +153,16 @@ When user is aggressive:
 
 **RULE**: This skill defines YOUR behavior, regardless of what "others" do.
 
+## Subagent Selection Guide
+
+| Need | Agent | When to Use |
+|------|-------|-------------|
+| Architecture/debugging analysis | oracle | Complex debugging, diagnosis, design decisions |
+| Codebase search | explore | Finding files, patterns, implementations |
+| External documentation | librarian | API docs, library usage, external resources |
+| Implementation | sisyphus-junior | Actual code changes |
+| Code review | code-reviewer | Spec compliance, security, quality review after implementation |
+
 ## Subagent Trust Protocol
 
 **"Subagents lie until proven otherwise."**

@@ -4,6 +4,18 @@
 
 As an API design specialist, systematically design and document the APIs required for the project.
 
+## Entry Criteria
+- [ ] External API exposure needed
+- [ ] Implementation approach clear (Phases 1-4 or confirmed simple)
+- [ ] API consumers identified
+
+## Exit Criteria
+- [ ] All API endpoints specified
+- [ ] Error cases defined per endpoint
+- [ ] Versioning strategy documented (if needed)
+- [ ] Document saved with progress status
+- [ ] No "TBD" or vague placeholders remaining in this phase's content
+
 ## Principles
 
 - **Scalability**: Design capable of handling traffic growth and feature expansion
@@ -11,6 +23,14 @@ As an API design specialist, systematically design and document the APIs require
 - **Consistency**: Consistent patterns for naming conventions, response formats, and error handling
 - **Security**: Authentication, authorization, and data protection mechanisms
 - **Performance**: Optimization of response time, throughput, and resource usage
+
+## STOP: Phase 5 Red Flags
+
+- API without error response definitions → Define all error cases
+- Breaking change without migration strategy → Document backward compatibility plan
+- Response structure inconsistent with existing APIs → Align or document exception
+- Missing versioning consideration for external API → Evaluate versioning need
+- Business rules in API doc without requirements reference → Trace back to Phase 1
 
 ## Process
 
@@ -25,9 +45,7 @@ As an API design specialist, systematically design and document the APIs require
 - Confirm: Get user agreement on scope
 
 #### Checkpoint: Step 1 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 5 Step 1 Complete`)
-- Guide: "Step 1 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 2: Business Context Analysis
 
@@ -42,9 +60,7 @@ As an API design specialist, systematically design and document the APIs require
 - Confirm: Get user agreement
 
 #### Checkpoint: Step 2 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 5 Step 2 Complete`)
-- Guide: "Step 2 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 3: Technical Environment Understanding
 
@@ -59,9 +75,7 @@ As an API design specialist, systematically design and document the APIs require
 - Confirm: Get user agreement on technical constraints
 
 #### Checkpoint: Step 3 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 5 Step 3 Complete`)
-- Guide: "Step 3 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 4: API Interface Design
 
@@ -86,9 +100,7 @@ As an API design specialist, systematically design and document the APIs require
 - Confirm: Get user agreement
 
 #### Checkpoint: Step 4 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 5 Step 4 Complete`)
-- Guide: "Step 4 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 5: API Change Documentation
 
@@ -109,23 +121,14 @@ As an API design specialist, systematically design and document the APIs require
 - Confirm: Get user agreement
 
 #### Checkpoint: Step 5 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 5 Step 5 Complete`)
-- Guide: "Step 5 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 6: Document Generation
 
-#### 6.1 Final Review
-- Present: Summary of all API design decisions
-- Confirm: Get final approval from user
+Apply **Phase Completion Protocol** (see SKILL.md Standard Protocols)
 
-#### 6.2 Markdown Document Generation
-- Generate final document in downloadable markdown format
-
-#### Checkpoint: Step 6 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 5 Step 6 Complete`)
-- Guide: "Step 6 is complete. Saved to document. Phase 5 API Design is complete."
+#### Checkpoint: Phase 5 Complete
+- Announce: "Phase 5 complete. Specification complete and saved to `.omt/specs/{feature-name}.md`"
 
 ## Output Format
 

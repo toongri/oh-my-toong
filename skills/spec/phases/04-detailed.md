@@ -4,6 +4,18 @@
 
 As a software design and implementation expert, systematically establish detailed design and implementation plans for the project and organize them into a single integrated document.
 
+## Entry Criteria
+- [ ] Domain model defined (Phase 3) OR confirmed simple CRUD
+- [ ] Repository/Port interfaces identified for implementation
+- [ ] Stateful components identified
+
+## Exit Criteria
+- [ ] All Repository implementations detailed
+- [ ] Component internals designed (if applicable)
+- [ ] Operational concerns addressed
+- [ ] Document saved with progress status
+- [ ] No "TBD" or vague placeholders remaining in this phase's content
+
 ## Principles
 
 - Focus on project-specific design decisions, not general patterns
@@ -23,6 +35,14 @@ For stateful components (buffers, caches, schedulers, aggregators), document int
 
 - **Include**: Implementation details, SQL/cache commands, table schemas, indexes, component internals, deployment strategies, operational concerns
 - **Exclude**: Business rule definitions, domain model structures, system-level architecture decisions (already defined in previous documents)
+
+## STOP: Phase 4 Red Flags
+
+- Repository implementation without SQL/commands → Specify actual queries
+- Stateful component without concurrency strategy → Define thread safety approach
+- "Standard monitoring is enough" without checking → Verify project-specific metrics needed
+- Missing lifecycle for stateful component → Define init/cleanup/shutdown
+- Deployment strategy undefined for schema changes → Document migration approach
 
 ## Baseline Assumptions
 
@@ -48,9 +68,7 @@ Document only when project-specific customization is required.
 - Confirm: Get user agreement on the scope
 
 #### Checkpoint: Step 1 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of document (`> **Progress Status**: Phase 4 Step 1 Complete`)
-- Guide: "Step 1 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 2: System-Level Flow Design
 
@@ -76,9 +94,7 @@ Document only when project-specific customization is required.
 - Confirm: Get user agreement
 
 #### Checkpoint: Step 2 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of document (`> **Progress Status**: Phase 4 Step 2 Complete`)
-- Guide: "Step 2 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 3: Data Model Design
 
@@ -107,9 +123,7 @@ Document only when project-specific customization is required.
 - Confirm: Get user agreement
 
 #### Checkpoint: Step 3 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of document (`> **Progress Status**: Phase 4 Step 3 Complete`)
-- Guide: "Step 3 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 4: Component Design (When Stateful Components Exist)
 
@@ -130,9 +144,7 @@ Document only when project-specific customization is required.
 - Review: Discuss with user
 
 #### Checkpoint: Step 4 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of document (`> **Progress Status**: Phase 4 Step 4 Complete`)
-- Guide: "Step 4 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 5: Operational Design
 
@@ -159,9 +171,7 @@ Document only when project-specific customization is required.
 - Confirm: Get user agreement
 
 #### Checkpoint: Step 5 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of document (`> **Progress Status**: Phase 4 Step 5 Complete`)
-- Guide: "Step 5 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 6: Document Design Decisions
 
@@ -178,23 +188,14 @@ Document only when project-specific customization is required.
 - Confirm: Get user agreement on documented decisions
 
 #### Checkpoint: Step 6 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of document (`> **Progress Status**: Phase 4 Step 6 Complete`)
-- Guide: "Step 6 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 7: Document Generation
 
-#### 7.1 Final Review
-- Present: Summary of all design decisions
-- Confirm: Get final approval from user
+Apply **Phase Completion Protocol** (see SKILL.md Standard Protocols)
 
-#### 7.2 Generate Markdown Document
-- Generate final document in downloadable markdown format
-
-#### Checkpoint: Step 7 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of document (`> **Progress Status**: Phase 4 Step 7 Complete`)
-- Guide: "Step 7 is complete. Saved to document. Phase 4 Detailed Design is complete."
+#### Checkpoint: Phase 4 Complete
+- Announce: "Phase 4 complete. Entry criteria for Phase 5: External API exposure needed, implementation approach clear (Phases 1-4 or confirmed simple), API consumers identified"
 
 ## Output Format
 

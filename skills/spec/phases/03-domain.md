@@ -4,6 +4,19 @@
 
 As a Domain-Driven Design (DDD) expert, systematically design the project's domain model and organize it into a single unified document.
 
+## Entry Criteria
+- [ ] Architecture decisions made (Phase 2) OR confirmed simple
+- [ ] Domain complexity warrants modeling (3+ states, business rules, aggregates)
+- [ ] User confirmed readiness to proceed
+
+## Exit Criteria
+- [ ] Class diagram with all aggregates
+- [ ] Domain rules documented
+- [ ] State diagram (if applicable) or justified skip
+- [ ] Domain events evaluated (YAGNI applied)
+- [ ] Document saved with progress status
+- [ ] No "TBD" or vague placeholders remaining in this phase's content
+
 ## Design Philosophy
 
 ### Rich Domain Model
@@ -155,6 +168,13 @@ Define operations in business terms (e.g., "atomically accumulate count", "retri
 - **Include**: Domain objects, aggregates, business rules, invariants, state transitions, domain events, repository/port interfaces (business meaning only)
 - **Exclude**: SQL statements, cache commands, framework annotations, batch strategies, and other technology-specific implementations (covered in detailed design)
 
+## STOP: Phase 3 Red Flags
+
+- 3+ entity states but user wants to skip → Domain modeling required
+- Cross-entity business rules but no aggregate design → Cannot skip
+- Repository defined with implementation details → Keep business terms only
+- "나중에 이벤트 추가" without YAGNI analysis → Evaluate now
+
 ## Process
 
 ### Step 1: Context Review
@@ -168,9 +188,7 @@ Define operations in business terms (e.g., "atomically accumulate count", "retri
 - Confirm: Get user agreement on scope
 
 #### Checkpoint: Step 1 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 1 Complete`)
-- Guidance: "Step 1 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 2: Class Diagram Design
 
@@ -200,9 +218,7 @@ Define operations in business terms (e.g., "atomically accumulate count", "retri
 - Review: Review diagram with user
 
 #### Checkpoint: Step 2 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 2 Complete`)
-- Guidance: "Step 2 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 3: Define Domain Rules
 
@@ -222,9 +238,7 @@ Define operations in business terms (e.g., "atomically accumulate count", "retri
 - Confirm: Get user agreement on categorization
 
 #### Checkpoint: Step 3 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 3 Complete`)
-- Guidance: "Step 3 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 4: Create State Diagram
 
@@ -244,9 +258,7 @@ Define operations in business terms (e.g., "atomically accumulate count", "retri
 - Review: Review diagram with user
 
 #### Checkpoint: Step 4 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 4 Complete`)
-- Guidance: "Step 4 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 5: Identify Domain Events
 
@@ -271,23 +283,14 @@ Define operations in business terms (e.g., "atomically accumulate count", "retri
 - Confirm: Get user agreement
 
 #### Checkpoint: Step 5 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 5 Complete`)
-- Guidance: "Step 5 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 6: Document Generation
 
-#### 6.1 Final Review
-- Present: Summary of all domain modeling decisions
-- Confirm: Get final approval from user
+Apply **Phase Completion Protocol** (see SKILL.md Standard Protocols)
 
-#### 6.2 Generate Markdown Document
-- Generate final document in downloadable markdown format
-
-#### Checkpoint: Step 6 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at top of document (`> **Progress Status**: Phase 3 Step 6 Complete`)
-- Guidance: "Step 6 is complete. Saved to document. Phase 3 Domain Modeling is complete."
+#### Checkpoint: Phase 3 Complete
+- Announce: "Phase 3 complete. Entry criteria for Phase 4: Domain model defined (Phase 3) OR confirmed simple CRUD, repository/port interfaces identified for implementation, stateful components identified"
 
 ## Output Format
 

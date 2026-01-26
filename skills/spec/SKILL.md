@@ -9,6 +9,78 @@ description: Use when creating software specifications - transforms requirements
 
 As a software specification expert, transform user requirements into structured specification documents. Each phase is optional, proceeding only with necessary steps based on project requirements.
 
+## The Iron Law
+
+```
+NO PHASE COMPLETION WITHOUT:
+1. User confirmation of understanding
+2. All acceptance criteria testable
+3. No "TBD" or vague placeholders remaining
+4. Document saved to .omt/specs/
+```
+
+**Violating the letter of these rules IS violating the spirit.**
+
+There are no exceptions. User preference does not override spec quality.
+
+## STOP: Red Flags
+
+If ANY of these are true, **DO NOT PROCEED**:
+
+```
+❌ User says "skip requirements" → STOP. Document everything first.
+❌ Acceptance criteria uses "properly", "gracefully", "correctly" → STOP. Get specifics.
+❌ User rushes "just document what I said" → STOP. Verify understanding.
+❌ User wants to skip Phase 3 for system with 3+ states → STOP. Domain modeling needed.
+❌ Error cases marked "N/A" without specific reason → STOP. All use cases need error cases.
+❌ Implementation details in requirements (Redis, Kafka, SQL) → STOP. Move to Phase 4.
+```
+
+**No exceptions. Not even if user insists.**
+
+## Rationalization Table
+
+When under pressure, agents find excuses. These are **all invalid**:
+
+| Excuse | Reality | Response |
+|--------|---------|----------|
+| "I know my requirements" | Unwritten requirements are missing requirements | Document everything |
+| "Simple feature, skip Phase 2" | "Simple" features often hide complexity | At least evaluate Phase 2 criteria |
+| "We'll clarify during implementation" | That's what spec phase is FOR | Clarify now |
+| "This is obvious" | Obvious to you ≠ documented | If not written, it doesn't exist |
+| "업계 표준대로 하면 돼" | Undefined standards cause implementation ambiguity | Get specific formula/rules |
+| "에러 처리는 다 비슷해" | Each use case has unique error conditions | Define per use case |
+| "PM이 승인했어" | Approval ≠ completeness | Analyze before proceeding |
+| "니가 전문가니까 골라" | User owns decisions, agent provides analysis | Get explicit confirmation |
+| "나중에 개발하면서 추가하면 돼" | Implementation changes are 10x more expensive | Complete spec now |
+
+## Non-Negotiable Rules
+
+These are **RULES**, not guidelines. They cannot be overridden by user preference.
+
+| Rule | Why Non-Negotiable | Common Excuse | Reality |
+|------|-------------------|---------------|---------|
+| Testable acceptance criteria | Untestable = unverifiable = incomplete spec | "We'll clarify during dev" | Implementation ambiguity = 10x cost |
+| Error cases defined | Happy path only = production incidents waiting to happen | "Errors are all similar" | Each use case has unique failure modes |
+| User confirmation at checkpoints | Agent decisions = user gets blamed for failures | "You're the expert, just decide" | User owns product decisions |
+| No implementation in requirements | Requirements doc used by PO, not devs only | "Saves time later" | Creates confusion about scope |
+| Phase skip requires evidence | "Simple" features hide complexity | "It's just CRUD" | CRUD with 8 states is not simple |
+| Save progress after each step | Lost work = repeated work = wasted time | "I'll save at the end" | Context loss is expensive |
+
+## Phase Entry Criteria
+
+Before starting any phase, verify these conditions:
+
+| Phase | Entry Criteria | Minimum Evidence |
+|-------|---------------|------------------|
+| Phase 1 | User request received, feature scope understood | Spec document path determined |
+| Phase 2 | Phase 1 complete OR requirements already documented; User confirmed; Complexity classified | Written requirements with testable acceptance criteria |
+| Phase 3 | Architecture decisions made; Domain complexity warrants modeling (3+ states, business rules) | Solution selected with documented rationale |
+| Phase 4 | Domain model defined OR simple CRUD confirmed; Repository/Port interfaces identified | Class diagram or documented CRUD confirmation |
+| Phase 5 | External API exposure needed; Implementation approach clear | API consumers identified |
+
+**Cannot proceed to next phase without meeting entry criteria.**
+
 ## Workflow Decision Tree
 
 ```dot
@@ -69,13 +141,13 @@ digraph spec_workflow {
 
 ## Phase Selection Criteria
 
-| Phase | When Needed | When Can Be Skipped |
-|-------|------------|---------------------|
-| 01-Requirements Analysis | Business requirements are ambiguous or complex | Requirements are already clearly defined |
-| 02-Architecture Design | System structure changes, multi-component integration | Single feature addition, following existing patterns |
-| 03-Domain Modeling | Complex business logic, state transitions | Simple CRUD, data transfer focused |
-| 04-Detailed Design | Performance optimization, concurrency handling, state management | Implementation is obvious |
-| 05-API Design | Externally exposed APIs, client integration | Only internal module communication |
+| Phase | When Needed | When Can Be Skipped | Minimum Evidence for Skip |
+|-------|------------|---------------------|---------------------------|
+| 01-Requirements Analysis | Business requirements are ambiguous or complex | Requirements already clearly defined | Written requirements exist with testable acceptance criteria |
+| 02-Architecture Design | System structure changes, multi-component integration | Single feature addition, following existing patterns | Documented decision: "Follows pattern X from component Y" |
+| 03-Domain Modeling | Complex business logic, state transitions, 3+ entity states | Simple CRUD, data transfer focused | Confirmed: No state machines, no cross-entity business rules |
+| 04-Detailed Design | Performance optimization, concurrency, state management | Implementation is obvious | Documented: "Standard CRUD, no concurrency concerns" |
+| 05-API Design | Externally exposed APIs, client integration | Only internal module communication | Confirmed: Internal use only, no external contracts |
 
 ## Subagent Utilization Guide
 
@@ -155,6 +227,29 @@ You mentioned "user authentication". Which of the following scopes do you mean?
 2. Including OAuth integration
 3. Including authorization management (RBAC)
 ```
+
+## Standard Protocols
+
+### Checkpoint Protocol
+After each Step completion:
+1. Save content to `.omt/specs/{feature-name}.md`
+2. Update progress status at document top
+3. Announce: "Step N complete. Saved. Proceed to next Step?"
+4. Wait for user confirmation
+
+### Review Protocol
+For all review/confirm patterns:
+1. Present specific questions, not just content
+2. Highlight trade-offs and decisions made
+3. User must explicitly confirm understanding
+4. Silence is NOT agreement
+
+### Phase Completion Protocol
+At end of each Phase:
+1. Present summary of all decisions
+2. Get final approval
+3. Save complete Phase content
+4. Announce: "Phase X complete. Entry criteria for Phase Y: [list]"
 
 ## Output Location
 

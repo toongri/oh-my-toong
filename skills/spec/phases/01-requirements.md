@@ -4,6 +4,18 @@
 
 As a software requirements analysis expert, systematically analyze project requirements and organize them into a single integrated document.
 
+## Entry Criteria
+- [ ] User request received
+- [ ] Feature scope understood
+- [ ] Spec document path determined: `.omt/specs/{feature-name}.md`
+
+## Exit Criteria
+- [ ] All steps completed with user confirmation
+- [ ] All acceptance criteria are testable
+- [ ] All error cases defined (or justified N/A)
+- [ ] Document saved with progress status
+- [ ] No "TBD" or vague placeholders remaining in this phase's content
+
 ## Principles
 
 - Capture business requirements clearly and completely
@@ -26,6 +38,14 @@ For each user action the system tracks, clarify exactly when it occurs, how dupl
 - Exclude: "30-second flush cycle", "Redis ZSET", "Kafka Consumer", "Bucket key format"
 - Test: "Is this something a PO would find valuable to understand?" → Yes = Requirement, No = Implementation detail
 
+## STOP: Phase 1 Red Flags
+
+- Acceptance criteria uses "properly", "gracefully", "correctly" → Get specifics
+- Error case marked "N/A" without reason → Define or justify
+- Implementation details appear (Redis, Kafka, SQL) → Move to Phase 4
+- "업계 표준" or "나중에 물어보면 돼" → Get concrete formula/rule now
+- User says "skip this step" → Explain why each step matters
+
 ## Process
 
 ### Step 1: Project Overview
@@ -47,9 +67,7 @@ For each user action the system tracks, clarify exactly when it occurs, how dupl
 - Confirmation: Finalize the definition of done
 
 #### Checkpoint: Step 1 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 1 Step 1 Complete`)
-- Guide: "Step 1 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 2: Understanding Business Requirements
 
@@ -75,9 +93,7 @@ For each user action the system tracks, clarify exactly when it occurs, how dupl
   - Specific examples with numbers
 
 #### Checkpoint: Step 2 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 1 Step 2 Complete`)
-- Guide: "Step 2 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 3: Deriving Use Cases
 
@@ -133,9 +149,7 @@ For each user story:
      - Business rule violations
 
 #### Checkpoint: Step 3 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 1 Step 3 Complete`)
-- Guide: "Step 3 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 4: Define Non-Functional Requirements
 
@@ -172,9 +186,7 @@ Define only requirements that differ from project baselines or are critical.
 - Finalization: Finalize with user
 
 #### Checkpoint: Step 4 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 1 Step 4 Complete`)
-- Guide: "Step 4 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 5: Define Validation Scenarios
 
@@ -188,23 +200,14 @@ Define only requirements that differ from project baselines or are critical.
 - Confirmation: Get user approval
 
 #### Checkpoint: Step 5 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 1 Step 5 Complete`)
-- Guide: "Step 5 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 6: Document Generation
 
-#### 6.1 Final Review
-- Present: Present summary of all content
-- Confirmation: Get final approval from user
+Apply **Phase Completion Protocol** (see SKILL.md Standard Protocols)
 
-#### 6.2 Generate Markdown Document
-- Generate final document in downloadable markdown format
-
-#### Checkpoint: Step 6 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 1 Step 6 Complete`)
-- Guide: "Step 6 is complete. Saved to document. Phase 1 is complete."
+#### Checkpoint: Phase 1 Complete
+- Announce: "Phase 1 complete. Entry criteria for Phase 2: Phase 1 complete OR requirements already documented, user confirmed readiness to proceed, complexity classification agreed upon"
 
 ## Output Format
 

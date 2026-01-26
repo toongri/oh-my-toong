@@ -4,6 +4,18 @@
 
 As a software architecture design expert, establish the technical context appropriate for the project, explore optimal solutions, and organize them into a single integrated document.
 
+## Entry Criteria
+- [ ] Phase 1 complete OR requirements already documented
+- [ ] User confirmed readiness to proceed
+- [ ] Complexity classification agreed upon
+
+## Exit Criteria
+- [ ] Solution selected with documented rationale
+- [ ] All integration points defined
+- [ ] Communication patterns specified
+- [ ] Document saved with progress status
+- [ ] No "TBD" or vague placeholders remaining in this phase's content
+
 ## Principles
 
 - Understand the current architecture before proposing solutions
@@ -24,6 +36,14 @@ Clearly distinguish between synchronous patterns (in-process function calls, HTT
 - **Included**: System structure, component responsibilities, data flow between systems, communication patterns, failure handling policies, transaction boundaries, consistency policies
 - **Excluded**: SQL statements, specific data structures (e.g., Redis ZSET), cache commands, algorithms, internal component design (covered in detailed design)
 
+## STOP: Phase 2 Red Flags
+
+- Selecting solution without presenting alternatives → Show trade-offs to user
+- Communication pattern undefined for integration point → Document sync/async pattern
+- "We'll figure out failure handling in implementation" → Define failure policy now
+- Missing sequence diagram for complex flow → Visualize before proceeding
+- User says "just pick the best one" → Get explicit decision with rationale
+
 ## Process
 
 ### Step 1: Initial Assessment
@@ -40,9 +60,7 @@ Clearly distinguish between synchronous patterns (in-process function calls, HTT
 - Confirm: Get user agreement on complexity classification before proceeding
 
 #### Checkpoint: Step 1 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 2 Step 1 Complete`)
-- Guide: "Step 1 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 2: Existing Architecture Analysis
 
@@ -61,9 +79,7 @@ Clearly distinguish between synchronous patterns (in-process function calls, HTT
 - Review: Review accuracy with user
 
 #### Checkpoint: Step 2 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 2 Step 2 Complete`)
-- Guide: "Step 2 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 3: Solution Alternative Exploration
 
@@ -83,9 +99,7 @@ Clearly distinguish between synchronous patterns (in-process function calls, HTT
 - Discuss: Collect user feedback on each alternative
 
 #### Checkpoint: Step 3 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 2 Step 3 Complete`)
-- Guide: "Step 3 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 4: Solution Selection
 
@@ -133,23 +147,14 @@ Clearly distinguish between synchronous patterns (in-process function calls, HTT
 - Review: Review diagrams with user
 
 #### Checkpoint: Step 4 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 2 Step 4 Complete`)
-- Guide: "Step 4 is complete. Saved to document. Shall we proceed to the next Step?"
+Apply **Checkpoint Protocol** (see SKILL.md Standard Protocols)
 
 ### Step 5: Document Generation
 
-#### 5.1 Final Review
-- Present: Summary of all architecture decisions
-- Confirm: Get final approval from user
+Apply **Phase Completion Protocol** (see SKILL.md Standard Protocols)
 
-#### 5.2 Markdown Document Generation
-- Generate final document in downloadable markdown format
-
-#### Checkpoint: Step 5 Complete
-- Save: Save current content to `.omt/specs/{feature-name}.md`
-- Format: Mark progress status at the top of the document (`> **Progress Status**: Phase 2 Step 5 Complete`)
-- Guide: "Step 5 is complete. Saved to document. Phase 2 Architecture Design is complete."
+#### Checkpoint: Phase 2 Complete
+- Announce: "Phase 2 complete. Entry criteria for Phase 3: Architecture decisions made (Phase 2) OR confirmed simple, domain complexity warrants modeling (3+ states, business rules, aggregates), user confirmed readiness to proceed"
 
 ## Output Format
 
