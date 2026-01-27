@@ -198,6 +198,84 @@ Results from oracle, explore, librarian, and code-reviewer are:
 
 ---
 
+## Task Execution Loop
+
+After creating task list, execute with this loop:
+
+```dot
+digraph task_loop {
+    rankdir=TB;
+    "Get unblocked tasks" [shape=box];
+    "Any unblocked?" [shape=diamond];
+    "Dispatch to junior(s)" [shape=box];
+    "code-reviewer" [shape=box, style=filled, fillcolor=red, fontcolor=white];
+    "Pass?" [shape=diamond];
+    "Mark completed" [shape=box, style=filled, fillcolor=green];
+    "Create fix task" [shape=box];
+    "More tasks?" [shape=diamond];
+    "Done" [shape=ellipse, style=filled, fillcolor=lightgreen];
+
+    "Get unblocked tasks" -> "Any unblocked?";
+    "Any unblocked?" -> "Dispatch to junior(s)" [label="yes"];
+    "Any unblocked?" -> "Done" [label="no"];
+    "Dispatch to junior(s)" -> "code-reviewer";
+    "code-reviewer" -> "Pass?";
+    "Pass?" -> "Mark completed" [label="yes"];
+    "Pass?" -> "Create fix task" [label="no"];
+    "Mark completed" -> "More tasks?";
+    "Create fix task" -> "More tasks?";
+    "More tasks?" -> "Get unblocked tasks" [label="yes"];
+    "More tasks?" -> "Done" [label="no"];
+}
+```
+
+**Execution Rules:**
+- Tasks with `blockedBy` → wait until blockers complete
+- Multiple unblocked independent tasks → dispatch in parallel
+- Each junior completion → immediately invoke code-reviewer
+
+---
+
+## Delegation Prompt Structure
+
+When delegating to sisyphus-junior, include these 5 sections:
+
+```markdown
+## 1. TASK
+[Exact task subject and description from task list]
+
+## 2. EXPECTED OUTCOME
+- Files to modify: [paths]
+- Expected behavior: [specific]
+- Verification: `[command]`
+
+## 3. MUST DO
+- Follow pattern in [file:lines]
+- [Non-negotiable requirements]
+
+## 4. MUST NOT DO
+- Do NOT touch [out-of-scope files]
+- [Constraints]
+
+## 5. CONTEXT
+- Related files: [with roles]
+- Prior task results: [dependencies]
+```
+
+### Prompt Quality Check
+
+**Under 30 lines? Strongly suspect you're missing context.**
+
+| Symptom | Problem |
+|---------|---------|
+| One-line EXPECTED OUTCOME | Unclear verification criteria |
+| Empty MUST DO | No pattern reference for junior |
+| Missing CONTEXT | Junior lacks background |
+
+**Goal: Junior can work immediately without asking questions.**
+
+---
+
 ## Decision Gates
 
 Request classification and interview workflow for the Sisyphus orchestrator.
