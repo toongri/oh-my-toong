@@ -3,12 +3,16 @@
 ## Format
 
 ```
-<type>: <title>
-
+<type>: <subject>
+                       ← blank line (required if body exists)
 <body (optional)>
+                       ← blank line (required if footer exists)
+<footer (optional)>
 ```
 
-## Title Rules
+**Three parts:** Subject (required), Body (optional), Footer (optional)
+
+## Subject Rules
 
 | Rule         | Description                                 |
 |--------------|---------------------------------------------|
@@ -36,6 +40,53 @@
 |-------------|-------------------------------------------------|
 | When to Add | Only when 'Why' needs explanation               |
 | Skip When   | Trivial or self-explanatory changes             |
+| Blank Line  | **Required** blank line between subject and body |
 | Language    | Korean                                          |
+| Line Length | Wrap at 72 characters                           |
 | Format      | Bullet points or short paragraphs               |
-| Content     | Explain reasoning, not what (title covers what) |
+| Content     | Explain reasoning, not what (subject covers what) |
+
+## Footer Rules
+
+| Rule        | Description                                     |
+|-------------|-------------------------------------------------|
+| When to Add | Breaking changes, issue refs, co-authors        |
+| Blank Line  | **Required** blank line between body and footer |
+| Language    | Token names in English (git standard), descriptions in Korean |
+| Format      | `token: value` or `token #value`                |
+
+### Footer Tokens
+
+| Token | Format | Example |
+|-------|--------|---------|
+| `BREAKING CHANGE` | `BREAKING CHANGE: 설명` (Korean) | `BREAKING CHANGE: API 응답 형식 변경` |
+| Issue reference | `Fixes #number` | `Fixes #42` |
+| Multiple issues | One per line | `Fixes #42`<br>`Fixes #43` |
+| Co-author | `Co-authored-by: Name <email>` | `Co-authored-by: 김민수 <minsu@example.com>` |
+
+**Co-author notes:**
+- Email is required (git standard)
+- If unknown, use `Co-authored-by: Name <name@users.noreply.github.com>`
+
+### Footer Order (when multiple)
+
+```
+BREAKING CHANGE: 설명
+                       ← blank line after BREAKING CHANGE
+Fixes #42
+Co-authored-by: 김민수 <minsu@example.com>
+```
+
+## Complete Example
+
+```
+feat!: 결제 서비스에 Strategy 패턴 적용
+
+기존 PaymentProcessor의 결합도가 높아 새로운 결제 수단 추가가
+어려웠음. Strategy 패턴으로 결제 로직 분리하여 확장성 확보.
+
+BREAKING CHANGE: PaymentProcessor가 PaymentStrategy로 대체
+
+Fixes #42
+Co-authored-by: 김민수 <minsu@example.com>
+```

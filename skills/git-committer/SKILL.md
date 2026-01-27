@@ -215,19 +215,30 @@ If any match → Unstage them before proceeding.
 
 ### Step 5: Generate Commit Message
 
-**Title rules (NON-NEGOTIABLE):**
+**Subject rules (NON-NEGOTIABLE):**
 - Korean (한국어)
 - **Max 50 characters** ← ENFORCED, not a guideline
 - 명사형 종결 (e.g., "추가", "수정", "삭제", "구현", "개선")
 - No period at end
 
-**If message > 50 chars:**
+**If subject > 50 chars:**
 1. Identify the ONE core change
 2. Remove unnecessary words
 3. Move details to body
 4. **Do NOT commit with > 50 chars**
 
-See `references/commit-conventions.md` for format details.
+**Body rules (when needed):**
+- Blank line between subject and body
+- Wrap at 72 characters
+- Explain WHY, not WHAT
+
+**Footer rules (when needed):**
+- Blank line between body and footer
+- `BREAKING CHANGE: description` for breaking changes
+- `Fixes #123` for issue references
+- `Co-authored-by: Name <email>` for pair programming
+
+See `references/commit-conventions.md` for complete format.
 
 ### Step 6: Execute Commit
 
