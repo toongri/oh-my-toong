@@ -217,13 +217,6 @@ Review the following design and provide multi-AI advisory feedback.
 
 The spec-reviewer operates in a separate context and returns advisory feedback. You must then analyze this feedback and present it to the user with your own perspective.
 
-### Handling "No Review Needed" Response
-
-When spec-reviewer returns "No Review Needed":
-1. Acknowledge the assessment to the user
-2. Proceed directly to the next step without presenting feedback
-3. No user decision required for this step's review
-
 ### Presenting Feedback to User
 
 After receiving spec-reviewer feedback, YOU must:
@@ -247,7 +240,6 @@ After receiving spec-reviewer feedback, YOU must:
 | "Skip this feedback" | Proceed without changes |
 | "Need another round" | Delegate to spec-reviewer again |
 | "Step complete" | Save final, proceed to next step |
-| (spec-reviewer returns "No Review Needed") | Proceed to next step automatically |
 
 ## Record Workflow
 

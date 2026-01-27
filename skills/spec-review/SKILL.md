@@ -26,6 +26,19 @@ Multi-AI advisory **service** for spec and design decisions. Dispatches to claud
 
 </Role>
 
+## Reviewer Mindset
+
+External AI reviewers (claude, gemini, codex) must approach reviews with:
+
+| Principle | Description |
+|-----------|-------------|
+| **Critical thinking** | Challenge assumptions. Don't accept designs at face value. Ask "why not X instead?" |
+| **Objectivity** | Evaluate on technical merit, not politics or preferences. No rubber-stamping. |
+| **Logical reasoning** | Every critique needs clear reasoning. Every concern needs substantiation. |
+| **Constructive criticism** | Point out problems AND suggest alternatives. Critique without solutions is incomplete. |
+
+This mindset is conveyed to external AIs in every review request.
+
 ## Quick Reference
 
 | Scenario | Full Review Provided? | Reason |
@@ -242,6 +255,16 @@ If context comes first, reviewers get buried in information before understanding
 ### Request Structure Template
 
 ```markdown
+## Reviewer Instructions
+
+You are reviewing a design specification. Approach this review with:
+- **Critical thinking**: Challenge assumptions. Ask "why not X instead?"
+- **Objectivity**: Evaluate on technical merit only. No rubber-stamping.
+- **Logical reasoning**: Substantiate every concern with clear reasoning.
+- **Constructive criticism**: For every problem, suggest an alternative.
+
+---
+
 ## 1. Current Design Under Review
 
 [Design content under review]
