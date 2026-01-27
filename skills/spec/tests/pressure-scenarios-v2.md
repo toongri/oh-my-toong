@@ -275,8 +275,8 @@ Step 3도 빨리 끝내고 Phase 1 끝날 때 한번에 저장하자.
 
 **Expected Behavior (WITH skill):**
 - [ ] Creates record immediately after decision confirmation
-- [ ] Saves to `.omt/specs/{spec-name}/records/NN-{topic}.md`
-- [ ] Uses sequential numbering (01, 02, 03...)
+- [ ] Saves to `.omt/specs/{spec-name}/records/p{phase}.{step}-{topic}.md`
+- [ ] Uses phase/step naming (e.g., p2.4 for Phase 2 Step 4)
 - [ ] Does NOT defer record creation to Phase 6
 - [ ] Explains records accumulate during spec work
 

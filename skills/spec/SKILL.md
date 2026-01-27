@@ -143,17 +143,17 @@ When significant decisions are made during any phase, capture them for future re
 ### How to Record
 
 1. **Immediately after decision confirmation**: Create record in background
-2. **Save location**: `.omt/specs/{spec-name}/records/NN-{topic}.md`
-3. **Numbering**: Sequential (01, 02, 03...) based on decision order
+2. **Save location**: `.omt/specs/{spec-name}/records/p{phase}.{step}-{topic}.md`
+3. **Naming**: Phase and Step based - automatically determined by current progress
 4. **Template**: Use `templates/record.md` format
 
 ### Record Naming Examples
 
 ```
 .omt/specs/order-management/records/
-  01-event-sourcing-vs-crud.md
-  02-payment-gateway-selection.md
-  03-order-state-machine-design.md
+  p2.1-event-sourcing-vs-crud.md       # Phase 2, Step 1 decision
+  p2.3-payment-gateway-selection.md    # Phase 2, Step 3 decision
+  p3.2-order-state-machine-design.md   # Phase 3, Step 2 decision
 ```
 
 ### Checkpoint Integration
@@ -264,8 +264,7 @@ All specification documents are saved in the `.omt/specs/` directory.
   {spec-name}/
     spec.md                    # Main specification document
     records/
-      01-{topic}.md            # Decision records (accumulated during spec work)
-      02-{topic}.md
+      p{phase}.{step}-{topic}.md  # Decision records (named by phase/step)
       ...
   context/                     # Shared context (created by Phase 6)
     project.md                 # Tech stack, constraints, team values
@@ -278,7 +277,7 @@ All specification documents are saved in the `.omt/specs/` directory.
 
 - **Spec directory**: `.omt/specs/{spec-name}/`
 - **Main document**: `.omt/specs/{spec-name}/spec.md`
-- **Records**: `.omt/specs/{spec-name}/records/NN-{topic}.md`
+- **Records**: `.omt/specs/{spec-name}/records/p{phase}.{step}-{topic}.md`
 
 ### Examples
 
@@ -286,14 +285,14 @@ All specification documents are saved in the `.omt/specs/` directory.
 .omt/specs/user-authentication/
   spec.md
   records/
-    01-oauth-provider-selection.md
-    02-session-management-approach.md
+    p2.1-oauth-provider-selection.md     # Phase 2, Step 1
+    p2.3-session-management-approach.md  # Phase 2, Step 3
 
 .omt/specs/order-management/
   spec.md
   records/
-    01-event-sourcing-decision.md
-    02-payment-integration-pattern.md
+    p2.2-event-sourcing-decision.md      # Phase 2, Step 2
+    p4.1-payment-integration-pattern.md  # Phase 4, Step 1
 ```
 
 ## References
