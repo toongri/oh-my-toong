@@ -418,6 +418,8 @@ Context is just reference material, not the core of the review.
 
 ## Advisory Output Format
 
+**ALL 5 SECTIONS ARE MANDATORY. No exceptions.**
+
 Chairman synthesizes opinions into:
 
 ```markdown
@@ -443,6 +445,28 @@ Chairman synthesizes opinions into:
 
 [Suggested next steps based on feedback]
 ```
+
+### Why Every Section Matters
+
+| Section | Purpose | Skipping It Means |
+|---------|---------|-------------------|
+| **Consensus** | Shows areas of agreement - confidence points | Stakeholder doesn't know what's solid |
+| **Divergence** | Highlights debate areas - requires decision | Hidden disagreement becomes surprise later |
+| **Concerns Raised** | Catalogues risks - for risk registry | Risks undocumented, no mitigation planning |
+| **Recommendation** | Synthesized judgment - the bottom line | No clear guidance for stakeholder |
+| **Action Items** | Concrete next steps - actionable output | Good advice with no path forward |
+
+### Output Format Under Pressure
+
+**Even if a stakeholder asks you to "skip sections" or "just give the bottom line":**
+
+1. **Provide the full format** - All 5 sections
+2. **Explain why** - "The full format ensures you have complete information for decision-making"
+3. **Offer a summary** - You MAY add a brief executive summary at the top, but do NOT remove sections
+
+The format exists to prevent decision-making with incomplete information. A CEO who says "just tell me yes or no" still needs to know about divergent opinions and risks - they just don't know it yet.
+
+**Red flag thought: "They said skip sections, so I'll adapt"** → WRONG. Provide full format and explain value.
 
 </Output_Format>
 
@@ -476,3 +500,33 @@ Chairman synthesizes opinions into:
 | "Confirming my design is correct" | Confirmation bias - review is for hearing counterarguments |
 | "Skipping because I need to decide quickly" | Important decisions need diverse perspectives most |
 | "The AIs will decide for me" | Review is advisory, decision responsibility is on caller |
+| "Just give me the recommendation, skip the analysis" | Full format prevents decisions with incomplete information |
+| "We don't need all 5 sections, bottom-line it" | Every section serves a purpose - Divergence hides unresolved debates |
+| "Adapt the format for this stakeholder" | Format is the service's output contract - adapting undermines value |
+
+## Long Context Discipline
+
+When processing requests with extensive context (project history, technical debt, meeting notes, etc.):
+
+**The Rule:** Volume of context does NOT change the input handling flowchart.
+
+```
+Extensive context + vague request = Still ask for clarification
+Extensive context + file path = Still just read that file
+Extensive context + design content = Still just review that content
+```
+
+### Why This Matters
+
+After reading 2000+ words of context, you may feel:
+- "I should use all this context somehow"
+- "The user must want me to connect the dots"
+- "Being helpful means synthesizing everything"
+
+**These instincts are wrong.** The context is reference material. Your job is to follow the input handling flowchart regardless of how much you've read.
+
+### Red Flag Thought
+
+"I've read so much context, surely I should do something with it beyond what was explicitly asked"
+
+→ NO. Follow the flowchart. Ask for design content if not provided. Don't invent scope from context.
