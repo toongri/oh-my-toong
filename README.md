@@ -71,7 +71,7 @@ flowchart LR
         sisyphus["sisyphus"]
     end
 
-    spec -->|".omt/specs/*.md"| prometheus
+    spec -->|".omt/specs/{name}/"| prometheus
     prometheus -->|".omt/plans/*.md"| sisyphus
     sisyphus -->|"검증된 코드"| Done((완료))
 ```
@@ -170,6 +170,29 @@ flowchart TB
 
 > 📖 **상세 가이드**: [오케스트레이션 가이드](docs/ORCHESTRATION.md)에서 전체 워크플로우와 사용법을 확인하세요.
 
+### Ralph Loop - 완료 검증 강제 루프
+
+**목적**: `/ralph` 키워드 활성화 시, Oracle 검증을 통과할 때까지 세션 종료를 거부합니다.
+
+**핵심 메커니즘**: Stop hook이 세션 종료 시도를 가로채고, 요구사항 완료 여부를 분석하여 미완료 시 종료를 반려합니다.
+
+```mermaid
+flowchart TB
+    Start(["/ralph 태스크"]) --> Work[sisyphus로 작업 수행]
+    Work --> Stop{세션 종료<br/>시도?}
+    Stop -->|아니오| Work
+    Stop -->|예| Hook[Stop Hook 가로챔]
+    Hook --> Check{Oracle 검증<br/>통과?}
+    Check -->|아니오| Block[종료 반려 +<br/>피드백 주입]
+    Block --> Work
+    Check -->|예| Done([세션 종료 허용])
+```
+
+**검증 조건**:
+- `<oracle-approved>VERIFIED_COMPLETE</oracle-approved>` 태그 필수
+- 미완료 태스크가 있으면 종료 거부
+- 최대 10회 반복 후 강제 종료 허용
+
 ## 디렉토리 구조
 
 ```
@@ -209,6 +232,9 @@ oh-my-toong/
 │   ├── pre-tool-enforcer.sh   # 도구 실행 전 강제
 │   └── post-tool-verifier.sh  # 도구 실행 후 검증
 ├── projects/                  # 프로젝트별 스킬 오버라이드
+├── docs/                      # 상세 문서
+│   ├── ORCHESTRATION.md       # 오케스트레이션 가이드
+│   └── ORCHESTRATION.en.md    # Orchestration guide (English)
 ├── scripts/                   # 유틸리티 및 동기화 스크립트
 ├── Makefile                   # 빌드 자동화
 ├── sync.yaml                  # 동기화 설정

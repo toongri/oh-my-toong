@@ -71,7 +71,7 @@ flowchart LR
         sisyphus["/sisyphus"]
     end
 
-    spec -->|".omt/specs/*.md"| prometheus
+    spec -->|".omt/specs/{name}/"| prometheus
     prometheus -->|".omt/plans/*.md"| sisyphus
     sisyphus -->|"verified code"| Done((Done))
 ```
@@ -170,6 +170,29 @@ flowchart TB
 
 > 📖 **Detailed Guide**: See the [Orchestration Guide](docs/ORCHESTRATION.en.md) for complete workflows and usage instructions.
 
+### Ralph Loop - Enforced Completion Verification
+
+**Purpose**: When `/ralph` keyword is activated, refuses session termination until Oracle verification passes.
+
+**Core Mechanism**: Stop hook intercepts session termination attempts, analyzes requirement completion, and rejects termination if incomplete.
+
+```mermaid
+flowchart TB
+    Start(["/ralph task"]) --> Work[Execute with sisyphus]
+    Work --> Stop{Session<br/>termination?}
+    Stop -->|No| Work
+    Stop -->|Yes| Hook[Stop Hook intercepts]
+    Hook --> Check{Oracle<br/>verified?}
+    Check -->|No| Block[Reject termination +<br/>inject feedback]
+    Block --> Work
+    Check -->|Yes| Done([Allow termination])
+```
+
+**Verification Conditions**:
+- `<oracle-approved>VERIFIED_COMPLETE</oracle-approved>` tag required
+- Rejects termination if incomplete tasks exist
+- Force allows termination after max 10 iterations
+
 ## Directory Structure
 
 ```
@@ -209,6 +232,9 @@ oh-my-toong/
 │   ├── pre-tool-enforcer.sh   # Pre-tool execution enforcement
 │   └── post-tool-verifier.sh  # Post-tool verification
 ├── projects/                  # Project-specific skill overrides
+├── docs/                      # Detailed documentation
+│   ├── ORCHESTRATION.md       # Orchestration guide (Korean)
+│   └── ORCHESTRATION.en.md    # Orchestration guide (English)
 ├── scripts/                   # Utility and sync scripts
 ├── Makefile                   # Build automation
 ├── sync.yaml                  # Sync configuration
