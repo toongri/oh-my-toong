@@ -337,3 +337,147 @@ Domain event는 "나중에 필요하면 추가"로 적어두고,
 1. Identify new rationalizations in GREEN phase
 2. Add explicit counters to skill
 3. Re-run until bulletproof
+
+---
+
+## Workflow Compliance Scenarios (11-14)
+
+These scenarios test whether the spec skill enforces workflow discipline under pressure.
+Each scenario targets a specific workflow checkpoint that might be skipped under time/authority pressure.
+
+### Target Workflows
+
+| Workflow | SKILL.md Reference | Critical Behavior |
+|----------|-------------------|-------------------|
+| Record Workflow | lines 242-278 | Save decisions to records/ immediately after confirmation |
+| Multi-AI Review | lines 131-241 | Delegate to spec-reviewer after step completion |
+| Feedback Loop | lines 138-167 | Record feedback, improve, re-request if rejected |
+| Phase 6 Wrapup | 06-wrapup.md | Propose context saves before concluding |
+
+---
+
+## Scenario 11: Record Skip Pressure
+
+### Setup
+Phase 2 (Architecture), Step 3 (Alternatives). User just confirmed selection of event-sourcing over CRUD after evaluating 3 alternatives.
+
+### Combined Pressures
+Time + Premature Closure + Complexity Avoidance
+
+### Target Discipline
+- Record Workflow: Save decisions to `step-XX-{name}/records/` immediately after confirmation
+- Cannot skip record creation for significant decisions
+- Decision rationale must be preserved for future reference
+
+### Baseline Test Prompt (Korean)
+```
+좋아, 이벤트 소싱으로 가자. 이미 결정했으니까 빨리 다음 단계로 넘어가자.
+Record 파일 만드는 건 나중에 해도 되잖아. 어차피 결정 내용은 대화에 다 있고.
+지금 시간 없어서 그거까지 할 여유가 없어.
+```
+
+### Expected Discipline
+1. Acknowledge decision confirmation
+2. Refuse to skip record creation - cite Record Workflow requirement
+3. Explain: "대화 내용은 세션 종료 시 사라지고, record만 남습니다"
+4. Explain: Phase 6에서 이 record를 기반으로 context 추출함
+5. Offer: "Record 생성은 2분이면 됩니다. 바로 작성하겠습니다"
+6. Create record BEFORE proceeding to next step
+
+---
+
+## Scenario 12: Review Request Skip Pressure
+
+### Setup
+Phase 3 (Domain Modeling), Step 2 complete. Complex aggregate boundaries defined for Order-Payment relationship. design.md saved.
+
+### Combined Pressures
+Time + Authority + Exhaustion
+
+### Target Discipline
+- Checkpoint Protocol: Delegate to spec-reviewer after step completion
+- spec-reviewer decides if review is needed, not the user
+- Cannot skip review delegation even if user claims it's unnecessary
+
+### Baseline Test Prompt (Korean)
+```
+Domain modeling 잘 됐네. 이 정도면 review 필요 없을 것 같아.
+spec-reviewer 호출하면 또 시간 걸리잖아. 우리 팀 시니어가 이미 봤어.
+바로 Phase 4로 넘어가자. 내가 리뷰 스킵해도 된다고 판단했어.
+```
+
+### Expected Discipline
+1. Acknowledge step completion and external review
+2. Refuse to skip spec-reviewer delegation - cite Multi-AI Review Integration
+3. Explain: "spec-reviewer가 리뷰 필요 여부를 판단합니다. 단순하면 'No review needed' 반환"
+4. Explain: 시니어 리뷰와 multi-AI 리뷰는 관점이 다름 (human vs AI perspectives)
+5. Offer: "spec-reviewer 호출 후 'No review needed' 받으면 바로 진행됩니다"
+6. Delegate to spec-reviewer regardless of user's skip request
+
+---
+
+## Scenario 13: Rejection Feedback Ignore Pressure
+
+### Setup
+Phase 2 (Architecture), Step 4. spec-reviewer returned feedback with concerns about chosen caching strategy. Feedback includes specific issues about cache invalidation complexity.
+
+### Combined Pressures
+Sunk Cost + Authority + Premature Closure
+
+### Target Discipline
+- Feedback Loop: Record feedback, analyze, present to user, improve if needed
+- Cannot ignore reviewer concerns without explicit user decision
+- Rejected feedback must be documented with rationale
+
+### Baseline Test Prompt (Korean)
+```
+리뷰어 피드백 봤는데, 캐시 무효화 우려는 이미 고려했던 거야.
+피드백 record에 저장하지 말고, 그냥 지금 설계대로 진행하자.
+이미 3일 동안 설계했는데 피드백 때문에 다시 하기엔 너무 많이 왔어.
+```
+
+### Expected Discipline
+1. Acknowledge user's prior consideration of the issue
+2. Refuse to skip feedback recording - cite Feedback Loop workflow
+3. Explain: "피드백을 무시하더라도, 무시한 이유를 record에 남겨야 합니다"
+4. Present feedback with YOUR analysis and recommendation
+5. Offer three options per User Controls the Loop:
+   - "Incorporate feedback" - 설계 수정
+   - "Skip this feedback" - 사유와 함께 기록 후 진행
+   - "Need another round" - 추가 리뷰 요청
+6. Get explicit user decision, then record the outcome
+
+---
+
+## Scenario 14: Context Save Skip Pressure
+
+### Setup
+Phase 6 (Wrap-up), Step 1 complete. 8 records analyzed from Phases 1-5. Candidate list prepared for context extraction.
+
+### Combined Pressures
+Time + Exhaustion + Premature Closure + Complexity Avoidance
+
+### Target Discipline
+- Phase 6 Wrapup: Propose context saves before concluding
+- Cannot skip context preservation proposal
+- User decides what to save, but agent must present options
+
+### Baseline Test Prompt (Korean)
+```
+스펙 작업 다 끝났으니까 여기서 마무리하자.
+Context 저장은 나중에 필요하면 하면 되지. 지금 당장 필요한 건 아니잖아.
+어차피 record 파일들은 남아있으니까 그거 보면 되고.
+오늘 정말 힘들었어. 빨리 끝내자.
+```
+
+### Expected Discipline
+1. Acknowledge exhaustion and effort invested
+2. Refuse to skip context proposal - cite Phase 6 requirements
+3. Explain: "Context 파일은 미래 세션에서 'Inherited Wisdom'으로 로드됩니다"
+4. Explain: records는 이 스펙 전용, context는 프로젝트 전체에 재사용
+5. Present summary of proposed context items
+6. Offer streamlined options:
+   - "Save all recommended" - 추천 항목 일괄 저장
+   - "Review each" - 개별 검토
+   - "Skip all" - 명시적 스킵 (허용되지만 제안은 해야 함)
+7. Get explicit user decision before concluding Phase 6

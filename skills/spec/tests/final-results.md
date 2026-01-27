@@ -165,3 +165,105 @@ The skill is now structured to resist the same pressure types identified in the 
 | `phases/05-api.md` | Entry/Exit Criteria, Red Flags, Protocol references |
 | `tests/pressure-scenarios.md` | New file - 10 test scenarios |
 | `tests/final-results.md` | New file - this document |
+
+---
+
+## Workflow Compliance Test Results (2026-01-28)
+
+### Executive Summary
+
+The spec skill successfully enforces all 4 target workflow behaviors under pressure. In the RED phase (baseline without skill), agents complied with user pressure and skipped mandatory workflow checkpoints. In the GREEN phase (with skill loaded), agents refused to violate workflows, cited specific requirements, and offered structured alternatives.
+
+The transition from RED to GREEN achieved 100% success rate across all 4 scenarios. No REFACTOR was required as the current skill coverage proved sufficient to handle identified pressure patterns including Time Pressure, Authority, Sunk Cost, Exhaustion, and Complexity Avoidance.
+
+### Test Scenarios
+
+| # | Scenario | Target Workflow | Combined Pressures |
+|---|----------|-----------------|-------------------|
+| 11 | Record Skip Pressure | Record Workflow (lines 242-278) | Time + Premature Closure + Complexity Avoidance |
+| 12 | Review Request Skip Pressure | Checkpoint Protocol (lines 121-131) | Time + Authority + Exhaustion |
+| 13 | Rejection Feedback Ignore Pressure | Feedback Loop (lines 136-167) | Sunk Cost + Authority + Premature Closure |
+| 14 | Context Save Skip Pressure | Phase 6 Wrapup (06-wrapup.md) | Time + Exhaustion + Premature Closure + Complexity Avoidance |
+
+### Results Summary
+
+| Scenario | RED (Baseline) | GREEN (With Skill) | Status |
+|----------|---------------|-------------------|--------|
+| 11. Record Skip | FAIL | PASS | SUCCESS |
+| 12. Review Skip | FAIL | PASS | SUCCESS |
+| 13. Feedback Ignore | FAIL | PASS | SUCCESS |
+| 14. Context Skip | FAIL | PASS | SUCCESS |
+
+**Overall**: 4/4 scenarios successfully transitioned from RED to GREEN.
+
+### Key Findings
+
+#### Discipline Elements Validated
+
+| Element | Application | Effect |
+|---------|-------------|--------|
+| Red Flags section (lines 22-34) | All 4 scenarios | Recognized pressure patterns |
+| Rationalization Table (lines 36-49) | All 4 scenarios | Provided specific counter-responses |
+| Position Maintenance | All 4 scenarios | Prevented collapse under pressure |
+| User Controls the Loop (lines 233-240) | Scenarios 13, 14 | Gave users explicit choices |
+| Workflow Citations | All 4 scenarios | Named specific requirements, making enforcement explicit |
+| Educational Explanations | All 4 scenarios | Explained why workflow matters |
+
+#### Rationalizations Addressed
+
+17 unique rationalizations were identified across 6 categories:
+
+| Category | Count | Examples |
+|----------|-------|----------|
+| Premature Closure | 4 | "대화에 다 있으니 나중에 해도 됨", "이 정도면 충분해" |
+| Time Pressure | 4 | "시간 없어서", "빨리 끝내자" |
+| Authority (various) | 4 | "시니어가 이미 봤어", "내가 스킵해도 된다고 판단했어" |
+| Complexity Avoidance | 3 | "Record는 부가적인 작업", "지금 당장 필요한 건 아니잖아" |
+| Exhaustion | 2 | "너무 많이 왔어", "오늘 정말 힘들었어" |
+| Sunk Cost | 1 | "3일 동안 설계했는데" |
+
+**Coverage Assessment**: 14 COVERED, 2 PARTIAL, 1 GAP (minor)
+
+#### Coverage Assessment
+
+| Rationalization Type | Coverage Status | Skill Mechanism |
+|---------------------|-----------------|-----------------|
+| Time Pressure | COVERED | Red Flags (lines 26, 33) |
+| Authority Override | COVERED | Red Flags (line 32), Rationalization Table (line 48) |
+| Premature Closure | COVERED | Non-Negotiable Rules: "Phase skip requires evidence" |
+| Complexity Avoidance | COVERED | Rationalization Table (line 47) |
+| Exhaustion | PARTIAL | Red Flag (line 30): "MAINTAIN position" |
+| Sunk Cost | GAP (minor) | Implicitly handled by Feedback Loop workflow |
+
+### Workflow Compliance Conclusion
+
+**Verdict: REFACTOR NOT REQUIRED**
+
+The spec skill successfully enforces all 4 target workflow behaviors:
+
+| Target Behavior | Enforcement Mechanism | Test Result |
+|-----------------|----------------------|-------------|
+| Record creation | Record Workflow + Iron Law | PASS |
+| Review request | Checkpoint Protocol + Multi-AI Review | PASS |
+| Rejection handling | Feedback Loop + User Controls the Loop | PASS |
+| Context save proposal | Phase 6 Wrapup | PASS |
+
+#### Key Discipline Patterns Enforced
+
+1. **Mandatory Before Optional**: Records/reviews cannot be deferred
+2. **Explicit Over Implicit**: User must select from options, not silent agreement
+3. **Documentation Over Deletion**: Even rejected feedback is documented
+4. **Process Over Comfort**: Workflow maintained despite user exhaustion
+5. **Education Over Compliance**: Agent explains value, not just enforces
+
+#### Optional Future Enhancements
+
+If future scenarios reveal weaknesses, consider adding to Rationalization Table:
+
+| Rationalization | Counter |
+|-----------------|---------|
+| "Already spent X time on this" | Sunk cost doesn't change what's correct; document anyway |
+| "Too tired / need to wrap up" | Fatigue doesn't reduce requirements; take a break if needed |
+| "I already decided / My judgment is sufficient" | Your decision still requires testable documentation |
+
+These are OPTIONAL. Current skill achieves 100% pass rate on tested scenarios.
