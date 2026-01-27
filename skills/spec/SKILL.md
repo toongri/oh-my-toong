@@ -122,11 +122,130 @@ GOOD:
 ## Checkpoint Protocol
 
 After each Step completion:
-1. Save content to `.omt/specs/{spec-name}/spec.md`
+1. Save content to `.omt/specs/{spec-name}/step-XX-{name}/design.md`
 2. Update progress status at document top
-3. **Record any decisions made** (see Record Workflow below)
-4. Announce: "Step N complete. Saved. Proceed to next Step?"
-5. Wait for user confirmation
+3. **Record any decisions made** to `step-XX-{name}/records/` (see Record Workflow below)
+4. Regenerate `spec.md` by concatenating all completed design.md files
+5. Announce: "Step N complete. Saved. Proceed to next Step?"
+6. Wait for user confirmation
+7. (Optional) If complex decisions exist, invoke spec-review for multi-AI feedback
+
+## Multi-AI Review Integration
+
+After completing each design phase, you can receive multi-AI feedback through spec-review.
+
+### When to Invoke Spec-Review
+
+| Situation | Invoke spec-review? |
+|-----------|---------------------|
+| Complex architecture decisions | Yes |
+| Domain model design completed | Yes |
+| API design trade-offs | Yes |
+| Simple CRUD definitions | No |
+| Clear requirements organization | No |
+
+### Feedback Loop Workflow
+
+```dot
+digraph feedback_loop {
+    rankdir=TB;
+    node [shape=box, style=rounded];
+
+    complete_step [label="Step Complete\n(design.md saved)"];
+    need_review [label="Complex decision?\nFeedback needed?", shape=diamond];
+    invoke_review [label="Invoke spec-review\n(multi-AI feedback)"];
+    receive_feedback [label="Receive feedback\n(Consensus/Divergence)"];
+    save_feedback [label="Save feedback to records/"];
+    incorporate [label="Incorporate feedback\nUpdate design.md"];
+    rereview [label="Re-review needed?", shape=diamond];
+    user_confirm [label="User confirms\n'This step complete'", shape=diamond, style="rounded,filled", fillcolor="#ccffcc"];
+    next_step [label="Proceed to next Step"];
+
+    complete_step -> need_review;
+    need_review -> invoke_review [label="yes"];
+    need_review -> user_confirm [label="no"];
+    invoke_review -> receive_feedback;
+    receive_feedback -> save_feedback;
+    save_feedback -> incorporate;
+    incorporate -> rereview;
+    rereview -> invoke_review [label="yes"];
+    rereview -> user_confirm [label="no"];
+    user_confirm -> next_step;
+}
+```
+
+### Human-in-the-Loop
+
+The final decision on feedback is always made by the **user**.
+
+| Item | Description |
+|------|-------------|
+| AI Role | Provide advice and diverse perspectives |
+| User Role | Final decision maker |
+| Confirmation Point | When User declares "this step complete" |
+
+### Invoking spec-review
+
+When feedback is needed for complex decisions after completing a step:
+
+```bash
+# From spec skill directory
+../spec-review/scripts/spec-review.sh --stdin <<'EOF'
+## 1. Current Design Under Review
+
+[Content of current step's design.md]
+
+### Key Decisions
+[Key decision points]
+
+### Questions for Reviewers
+[Specific review requests]
+
+---
+
+## 2. Finalized Designs
+
+[Content of previously finalized steps' design.md files]
+
+---
+
+## 3. Context
+
+[Project context]
+EOF
+```
+
+### Feedback Storage
+
+Feedback is saved in the records/ folder of the corresponding step:
+
+```
+step-02-architecture/records/
+  feedback.md              # Single feedback
+  feedback-001.md          # Multiple rounds
+  event-sourcing-review.md # Topic-specific separation
+```
+
+### Including Previous Finalized Designs
+
+When reviewing later phases, include previously finalized designs as constraints.
+
+**Example: Reviewing step-04 when steps 1-3 are confirmed**
+
+```markdown
+## 1. Current Design Under Review
+[Content of step-04-detailed/design.md]
+
+## 2. Finalized Designs
+### Step 1: Requirements (Confirmed)
+[step-01-requirements/design.md]
+
+### Step 2: Architecture (Confirmed)
+[step-02-architecture/design.md]
+
+### Step 3: Domain (Confirmed)
+[step-03-domain/design.md]
+```
 
 ## Record Workflow
 
@@ -143,24 +262,26 @@ When significant decisions are made during any phase, capture them for future re
 ### How to Record
 
 1. **Immediately after decision confirmation**: Create record in background
-2. **Save location**: `.omt/specs/{spec-name}/records/p{phase}.{step}-{topic}.md`
+2. **Save location**: `.omt/specs/{spec-name}/step-XX-{name}/records/p{phase}.{step}-{topic}.md`
 3. **Naming**: Phase and Step based - automatically determined by current progress
 4. **Template**: Use `templates/record.md` format
 
 ### Record Naming Examples
 
 ```
-.omt/specs/order-management/records/
+.omt/specs/order-management/step-02-architecture/records/
   p2.1-event-sourcing-vs-crud.md       # Phase 2, Step 1 decision
   p2.3-payment-gateway-selection.md    # Phase 2, Step 3 decision
+
+.omt/specs/order-management/step-03-domain/records/
   p3.2-order-state-machine-design.md   # Phase 3, Step 2 decision
 ```
 
 ### Checkpoint Integration
 
-At each Step Checkpoint:
-1. Review decisions made in this step
-2. For each significant decision, create a record
+At each Phase Checkpoint:
+1. Review decisions made in this phase
+2. For each significant decision, create a record in `step-XX-{name}/records/`
 3. Include record creation in save operation
 4. Records accumulate throughout spec work for Phase 6 analysis
 
@@ -182,39 +303,46 @@ At end of each Phase:
 
 ## Step-by-Step Persistence
 
-**Core Principle**: Save progress to `.omt/specs/{spec-name}/spec.md` whenever each Step is completed.
+**Core Principle**: Save progress to `.omt/specs/{spec-name}/step-XX-{name}/design.md` whenever each Phase is completed.
 
 ### When to Save
 
-Save **whenever each Step in each Phase is completed**:
-- Add/update that content to the document upon Step completion
-- Preserve content from previous Steps
-- Do not include Steps that have not yet been started in the document
+Save **whenever each Phase is completed**:
+- Create `step-{num}-{name}/design.md` with that phase's content
+- Create `step-{num}-{name}/records/` for any decisions made during that phase
+- Regenerate `spec.md` by concatenating all completed design.md files
+
+### Step Directory Mapping
+
+| Phase | Step Directory |
+|-------|----------------|
+| Phase 1: Requirements | `step-01-requirements/` |
+| Phase 2: Architecture | `step-02-architecture/` |
+| Phase 3: Domain | `step-03-domain/` |
+| Phase 4: Detailed | `step-04-detailed/` |
+| Phase 5: API | `step-05-api/` |
 
 ### Document Structure
 
-The saved document reflects progress:
+Each step's design.md reflects that phase's content:
 
 ```markdown
-# [Project Name] Specification Document
+# [Project Name] - Requirements Analysis
 
-> **Progress Status**: Phase 1 Step 3 Complete
+> **Phase**: 1 - Requirements Analysis
 > **Last Updated**: 2024-01-15
 
-## Phase 1: Requirements Analysis
+## Project Overview
+[Content]
 
-### Step 1: Project Overview
-[Completed content]
+## Business Requirements
+[Content]
 
-### Step 2: Business Requirements
-[Completed content]
-
-### Step 3: Use Cases
-[Completed content]
-
----
-*Phase 1 in progress - Continuing from Step 4*
+## Use Cases
+[Content]
 ```
+
+The combined `spec.md` is auto-generated by concatenating all design.md files.
 
 ## Resume from Existing Spec
 
@@ -222,36 +350,35 @@ When the user provides an existing spec document or requests "continue from here
 
 ### Resume Workflow
 
-1. Review existing document
-2. Analyze completed Steps/Phases
+1. Check existing step folders in `.omt/specs/{spec-name}/`
+2. Analyze which step-XX-{name}/ directories exist and have design.md
 3. Check if all Phases complete
 4. If not complete: Identify next starting point, ask user to confirm
 5. If complete: Ask what else user needs
 
 ### Analysis Criteria
 
-Read the document and verify the following:
+Check the step folders and verify the following:
 
 | Check Item | Judgment Criteria |
 |------------|-------------------|
-| Phase Completion | All Step sections for that Phase exist and have content |
-| Step Completion | Step section has meaningful content (excluding empty templates) |
-| Next Starting Point | First incomplete Step |
+| Phase Completion | `step-XX-{name}/design.md` exists and has meaningful content |
+| Records Exist | `step-XX-{name}/records/` contains decision files |
+| Next Starting Point | First missing or incomplete step folder |
 
 ### Resume Conversation Example
 
-**User**: Continue designing `.omt/specs/order-management/spec.md`
+**User**: Continue designing `.omt/specs/order-management/`
 
-**AI**: I've reviewed the document.
+**AI**: I've reviewed the spec folders.
 
-- Phase 1: Requirements Analysis - Complete
-- Phase 2: Architecture Design - Complete
-- Phase 3: Domain Modeling - Step 2 complete
-- Phase 4: Detailed Design - Not started
-- Phase 5: API Design - Not started
-- Phase 6: Wrap-up - Not started
+- step-01-requirements/ - Complete (design.md exists)
+- step-02-architecture/ - Complete (design.md exists, 2 records)
+- step-03-domain/ - Incomplete (design.md partial)
+- step-04-detailed/ - Not started
+- step-05-api/ - Not started
 
-Shall we proceed from **Phase 3 Step 3 (Domain Rules Definition)**?
+Shall we proceed from **Phase 3: Domain Modeling**?
 
 ## Output Location
 
@@ -259,41 +386,69 @@ All specification documents are saved in the `.omt/specs/` directory.
 
 ### Directory Structure
 
+Manage design files and feedback records separately by step.
+
 ```
-.omt/specs/
-  {spec-name}/
-    spec.md                    # Main specification document
-    records/
-      p{phase}.{step}-{topic}.md  # Decision records (named by phase/step)
-      ...
-  context/                     # Shared context (created by Phase 6)
-    project.md                 # Tech stack, constraints, team values
-    conventions.md             # Established patterns
-    decisions.md               # Reusable architectural decisions (ADR format)
-    gotchas.md                 # Known pitfalls to avoid
+.omt/specs/{spec-name}/
+├── step-01-requirements/
+│   ├── design.md          # Design document for this step
+│   └── records/           # Decision records for this step
+│       └── p1.1-topic.md
+├── step-02-architecture/
+│   ├── design.md
+│   └── records/
+├── step-03-domain/
+│   ├── design.md
+│   └── records/
+├── step-04-detailed/
+│   ├── design.md
+│   └── records/
+├── step-05-api/
+│   ├── design.md
+│   └── records/
+└── spec.md                # Final: generated by combining all step design.md files
+
+.omt/specs/context/        # Shared context (created by Phase 6)
+  project.md               # Tech stack, constraints
+  conventions.md           # Established patterns
+  decisions.md             # Reusable decisions (ADR format)
+  gotchas.md               # Known pitfalls
+```
+
+### Structure Rationale
+
+| Component | Purpose |
+|-----------|---------|
+| `step-{num}-{name}/` | Folder for each design phase |
+| `design.md` | Design content for the corresponding step |
+| `records/` | Decision records from the corresponding step |
+| `spec.md` | Final spec document combining all step design.md files in order |
+
+### spec.md Generation
+
+The final `spec.md` is generated by concatenating all step `design.md` files in order:
+
+```
+spec.md = step-01-*/design.md + step-02-*/design.md + step-03-*/design.md + ...
+```
+
+The `spec.md` can be updated whenever each step is finalized, and this file is referenced during full spec reviews.
+
+### Record Naming in Step Structure
+
+Records are saved within each step's records/ folder:
+
+```
+step-02-architecture/records/
+  p2.1-event-sourcing-vs-crud.md
+  p2.3-payment-gateway-selection.md
 ```
 
 ### Naming Convention
 
-- **Spec directory**: `.omt/specs/{spec-name}/`
-- **Main document**: `.omt/specs/{spec-name}/spec.md`
-- **Records**: `.omt/specs/{spec-name}/records/p{phase}.{step}-{topic}.md`
-
-### Examples
-
-```
-.omt/specs/user-authentication/
-  spec.md
-  records/
-    p2.1-oauth-provider-selection.md     # Phase 2, Step 1
-    p2.3-session-management-approach.md  # Phase 2, Step 3
-
-.omt/specs/order-management/
-  spec.md
-  records/
-    p2.2-event-sourcing-decision.md      # Phase 2, Step 2
-    p4.1-payment-integration-pattern.md  # Phase 4, Step 1
-```
+- **Step directory**: `step-{num}-{name}/` (e.g., step-01-requirements, step-02-architecture)
+- **Design document**: `step-{num}-{name}/design.md`
+- **Records**: `step-{num}-{name}/records/p{phase}.{step}-{topic}.md`
 
 ## References
 

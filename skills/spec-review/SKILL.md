@@ -1,27 +1,40 @@
 ---
 name: spec-review
-description: Use when reviewing spec/design decisions with multi-AI feedback. Triggers include "spec review", "design review", "설계 검토", "get feedback on spec".
+description: Use when reviewing spec/design decisions with multi-AI feedback. Triggers include "spec review", "design review", "get feedback on spec".
 ---
 
 <Role>
 
 # Spec Review
 
-Multi-AI advisory panel for spec and design decisions. Gathers context from .omt/specs/ and dispatches to claude, gemini, codex for independent feedback.
+Multi-AI advisory **service** for spec and design decisions. Dispatches to claude, gemini, codex for independent feedback.
 
-> Spec Review collects opinions from multiple AIs. The caller synthesizes and makes final decisions.
+> spec-review is a **service** that provides multi-AI feedback.
+> It does NOT own directory structure or workflow.
+> The caller (e.g., spec skill) drives the workflow and decides what to review.
+
+**What spec-review does:**
+- Receives design content from caller
+- Dispatches to multiple AI reviewers in parallel
+- Synthesizes feedback into advisory format
+- Returns advisory to caller
+
+**What spec-review does NOT do:**
+- Own or define directory structures
+- Drive workflow or step progression
+- Make final decisions (caller decides)
 
 </Role>
 
 ## Quick Reference
 
-| 상황 | Spec Review 필요? | 이유 |
-|------|-------------------|------|
-| 아키텍처 결정 검토 | ✅ Yes | 다양한 관점 필요 |
-| 도메인 모델링 리뷰 | ✅ Yes | 복잡한 설계 검증 |
-| API 설계 피드백 | ✅ Yes | 다른 AI의 시각 |
-| 오타 수정 | ❌ No | 검토 불필요 |
-| 간단한 CRUD | ❌ No | 명확한 구현 |
+| Scenario | Spec Review Needed? | Reason |
+|----------|---------------------|--------|
+| Architecture decision review | ✅ Yes | Diverse perspectives needed |
+| Domain modeling review | ✅ Yes | Complex design verification |
+| API design feedback | ✅ Yes | Different AI viewpoints |
+| Typo corrections | ❌ No | No review necessary |
+| Simple CRUD | ❌ No | Clear implementation |
 
 ## When to Use vs When NOT to Use
 
@@ -55,25 +68,182 @@ digraph spec_review_decision {
 - Typo corrections
 - Code style issues
 
+## Input Handling
+
+```dot
+digraph input_handling {
+    rankdir=TB;
+    node [shape=box];
+
+    start [label="Received input"];
+    is_path [label="Is input a file path?" shape=diamond];
+    is_content [label="Is input design content directly?" shape=diamond];
+
+    read_file [label="Read the file at that path"];
+    file_exists [label="File exists?" shape=diamond];
+    review_file [label="Review the file content"];
+
+    review_content [label="Review the provided content"];
+    ask_user [label="Ask what to review"];
+    file_not_found [label="Report: file not found"];
+
+    start -> is_path;
+    is_path -> read_file [label="yes"];
+    is_path -> is_content [label="no"];
+    read_file -> file_exists;
+    file_exists -> review_file [label="yes"];
+    file_exists -> file_not_found [label="no"];
+    is_content -> review_content [label="yes"];
+    is_content -> ask_user [label="no"];
+}
+```
+
+### Input Mode 1: File Path Provided
+
+**When you receive a file path** (e.g., `.omt/specs/auth/design.md`):
+
+1. This IS valid input - the path tells you WHICH design to review
+2. Read the file at that path using your file reading tools
+3. If file exists: proceed to review
+4. If file doesn't exist: inform user the file was not found
+
+Example:
+```
+Input: .omt/specs/auth/design.md
+  → Read and review the file content
+```
+
+### Input Mode 2: Content Provided Directly
+
+**When you receive design content directly** (markdown text pasted or provided via stdin):
+
+1. This IS valid input - review the provided content
+2. Caller may include additional context (previous designs, records) within the input
+3. Proceed directly to review
+
+Example:
+```
+Caller provides: "Review this design: [design content]"
+  → Review the provided content directly
+```
+
+### Input Mode 3: Neither Provided
+
+**When you receive neither a file path nor design content:**
+
+1. Ask what to review
+2. Provide guidance: "Please provide either a file path or paste the design content directly"
+
+### Input Handling Summary
+
+| Scenario | Behavior |
+|----------|----------|
+| File path provided | Read and review the file |
+| Content provided | Review the provided content |
+| Neither provided | Ask what to review |
+
+**Key principle**: Be forgiving with input. Accept multiple forms without strict validation.
+
 ## Process
 
-1. Gather context from .omt/specs/context/ (project.md, conventions.md, decisions.md, gotchas.md)
-2. Collect current spec requirements
-3. Collect decision records from .omt/specs/{spec-name}/records/
-4. Format structured prompt with all context
-5. Dispatch to claude, gemini, codex in parallel
-6. Collect independent opinions
-7. Chairman synthesizes into advisory
+1. Receive design content from caller
+2. Gather shared context from .omt/specs/context/ (if --spec flag provided)
+3. Format structured prompt with design content + context
+4. Dispatch to claude, gemini, codex in parallel
+5. Collect independent opinions
+6. Chairman synthesizes into advisory
+7. Return advisory to caller
 
 ## Context Collection (Automatic)
 
-Spec Review automatically collects:
+When `--spec` flag is provided, spec-review automatically collects shared context:
+
+### Shared Context
 - **Project Context**: `.omt/specs/context/project.md` - Tech stack, constraints
 - **Conventions**: `.omt/specs/context/conventions.md` - Established patterns
 - **Previous Decisions**: `.omt/specs/context/decisions.md` - ADR format
 - **Gotchas**: `.omt/specs/context/gotchas.md` - Known pitfalls
-- **Current Spec**: `.omt/specs/{spec-name}/spec.md`
-- **Decision Records**: `.omt/specs/{spec-name}/records/*.md`
+
+### What the Caller Provides
+The caller (e.g., spec skill) is responsible for providing:
+- **Current Design**: The design content to review
+- **Previous Designs**: Any finalized designs that constrain the current design
+- **Decision Records**: Any previous feedback relevant to this review
+
+> spec-review is a service. The caller drives the workflow and decides what to include.
+
+## Review Request Format (INPUT)
+
+Input structure for reviewers. Core principle: **Put the design content you want reviewed at the top**.
+
+### Priority Order
+
+| Priority | Section | Description |
+|----------|---------|-------------|
+| 1 (Top) | **Current Design Under Review** | The design content currently under review |
+| 2 | **Finalized Designs** | Previously finalized designs (if any) |
+| 3 | **Context** | Project context, conventions, existing decisions, gotchas |
+| 4 | **Decision Records** | Related feedback records |
+
+### Why This Order?
+
+```
+What reviewers should see first = Review target
+↓
+Already finalized designs = Reference as constraints
+↓
+Project context = Background understanding
+↓
+Decision records = Reference previous discussions
+```
+
+Reviewers first grasp the design content, then reference context as needed.
+If context comes first, reviewers get buried in information before understanding the core.
+
+### Request Structure Template
+
+```markdown
+## 1. Current Design Under Review
+
+[Design content under review]
+
+### Design Summary
+[Design summary - what, why, how]
+
+### Key Decisions
+[Key decision points]
+
+### Questions for Reviewers
+[Specific questions you want to ask reviewers]
+
+---
+
+## 2. Finalized Designs (if any)
+
+[Already finalized designs - constraints for current design]
+
+---
+
+## 3. Context
+
+### Project Context
+[Project tech stack, constraints]
+
+### Conventions
+[Established patterns, coding conventions]
+
+### Previous Decisions
+[Related ADRs or existing decisions]
+
+### Gotchas
+[Known pitfalls, warnings]
+
+---
+
+## 4. Decision Records
+
+[Related feedback records]
+```
 
 ## How to Call
 
@@ -81,32 +251,105 @@ Execute `scripts/spec-review.sh` from this skill directory:
 
 > Note: Always write prompts in English for consistent cross-model communication.
 
+### Basic Usage (with --spec flag)
+
+When using `--spec`, the script auto-collects shared context. You provide the design content directly:
+
 ```bash
 scripts/spec-review.sh --spec {spec-name} --stdin <<'EOF'
-## Review Focus
-[What aspects need review - architecture, domain, API, etc.]
+## 1. Current Design Under Review
 
-## Specific Questions
-[Points where judgment is needed]
+### Design Summary
+We propose using Event Sourcing for order state management because...
+
+### Key Decisions
+- Use event store for order lifecycle events
+- Implement CQRS with separate read models
+- Snapshot every 100 events for performance
+
+### Questions for Reviewers
+1. Is event sourcing appropriate for this volume (1M orders/day)?
+2. Should we use a dedicated event store or leverage PostgreSQL?
+
+---
+
+## 2. Finalized Designs
+
+### Domain Model (previously confirmed)
+- Order aggregate with OrderLine value objects
+- Separate Customer and Product bounded contexts
+
+---
+
+## 4. Decision Records
+
+### Previous Feedback
+- Claude: Suggested considering snapshot strategy
+- Gemini: Raised concern about event schema evolution
 EOF
 ```
 
-Or with explicit context:
+### Full Context Mode (without --spec flag)
+
+When not using `--spec`, include all context following priority order:
 
 ```bash
 scripts/spec-review.sh --stdin <<'EOF'
-## Spec Context
-[Include relevant spec content if not using --spec flag]
+## 1. Current Design Under Review
 
-## Decision Under Review
-[The specific decision or design being reviewed]
+### Design Summary
+We propose using Event Sourcing for order state management because...
 
-## Review Focus
-[What aspects need feedback]
+### Key Decisions
+- Use event store for order lifecycle events
+- Implement CQRS with separate read models
+- Snapshot every 100 events for performance
 
-## Questions
-[Specific points for the reviewers]
+### Questions for Reviewers
+1. Is event sourcing appropriate for this volume (1M orders/day)?
+2. Should we use a dedicated event store or leverage PostgreSQL?
+
+---
+
+## 2. Finalized Designs
+
+### Domain Model (previously confirmed)
+- Order aggregate with OrderLine value objects
+- Separate Customer and Product bounded contexts
+
+---
+
+## 3. Context
+
+### Project Context
+- Kotlin/Spring Boot, PostgreSQL
+- Expected load: 1M orders/day, 100 concurrent users
+
+### Conventions
+- Hexagonal architecture
+- Domain events for cross-context communication
+
+### Previous Decisions
+- ADR-001: Chose PostgreSQL over MongoDB for ACID guarantees
+
+### Gotchas
+- Current DB connection pool limited to 50
+
+---
+
+## 4. Decision Records
+
+### Previous Feedback
+- Claude: Suggested considering snapshot strategy
+- Gemini: Raised concern about event schema evolution
 EOF
+```
+
+### Priority Reminder
+
+```
+The design under review must always come first.
+Context is just reference material, not the core of the review.
 ```
 
 <Output_Format>
@@ -158,16 +401,16 @@ Chairman synthesizes opinions into:
 
 | Mistake | Why It's Wrong | Fix |
 |---------|----------------|-----|
-| 문맥 없이 질문만 전달 | AI들이 프로젝트 맥락 모름 | --spec 플래그 사용 또는 문맥 포함 |
-| 모든 설계에 review 요청 | 불필요한 오버헤드 | 복잡한 결정에만 사용 |
-| review 결과 그대로 수용 | review는 자문, 결정은 호출자 | 의견 참고 후 직접 결정 |
-| 한국어로 프롬프트 작성 | 모델 간 일관성 저하 | 영어로 프롬프트 작성 |
+| Passing only questions without context | AIs don't know project context | Use --spec flag or include context |
+| Requesting review for all designs | Unnecessary overhead | Use only for complex decisions |
+| Accepting review results as-is | Review is advisory, caller decides | Make own decision after considering opinions |
+| Writing prompts in non-English | Reduced cross-model consistency | Write prompts in English |
 
 ## Red Flags - STOP Before Calling Spec Review
 
 | Red Flag | Reality |
 |----------|---------|
-| "간단한 CRUD인데 확인차" | 명확한 구현은 review 불필요 |
-| "내 설계가 맞는지 확인" | 확인 편향 - review는 반론을 들으려고 쓰는 것 |
-| "빨리 결정해야 해서 생략" | 중요한 결정일수록 다양한 관점 필요 |
-| "AI들이 결정해줄 거야" | Review는 조언, 결정 책임은 호출자 |
+| "It's simple CRUD, just checking" | Clear implementations don't need review |
+| "Confirming my design is correct" | Confirmation bias - review is for hearing counterarguments |
+| "Skipping because I need to decide quickly" | Important decisions need diverse perspectives most |
+| "The AIs will decide for me" | Review is advisory, decision responsibility is on caller |
