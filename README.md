@@ -352,28 +352,6 @@ skills:
   - component: your-project-name:testing
 ```
 
-## 컨벤션
-
-### 커밋 메시지
-
-- 한국어로 작성, 명사형 종결
-- 제목줄 50자 제한
-- 원자적 커밋 (커밋당 하나의 논리적 변경)
-
-### 네이밍 패턴
-
-- **스킬**: 그리스 신화에서 따온 이름 (Prometheus, Oracle, Sisyphus)
-- **테스트 DisplayNames**: 한국어
-- **테스트 메서드명**: 영어 (백틱 사용)
-- **Council 프롬프트**: 영어 (모델 간 일관성 위해)
-
-### 스킬 호출
-
-스킬은 파일을 직접 읽는 것이 아닌 Skill 도구를 통해 호출:
-
-```
-Skill(skill: "prometheus")  // 올바름
-Read("skills/prometheus/SKILL.md")  // 잘못됨
 ```
 
 ## HUD 디스플레이

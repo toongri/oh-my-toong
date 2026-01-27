@@ -352,25 +352,6 @@ skills:
   - component: your-project-name:testing
 ```
 
-## Conventions
-
-### Commit Messages
-
-- Written in Korean (한국어) with 명사형 종결
-- 50-character limit for subject line
-- Atomic commits (one logical change per commit)
-
-### Naming Patterns
-
-- **Skills**: Named after Greek mythology (Prometheus, Oracle, Sisyphus)
-- **Test DisplayNames**: Korean
-- **Test method names**: English with backticks
-- **Council prompts**: English (for cross-model consistency)
-
-### Skill Invocation
-
-Skills are invoked via the Skill tool, not by reading files directly:
-
 ```
 Skill(skill: "prometheus")  // Correct
 Read("skills/prometheus/SKILL.md")  // Wrong
