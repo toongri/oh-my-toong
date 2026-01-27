@@ -23,7 +23,6 @@ scripts:
     - hud.js
 
 hooks:
-  platforms: [claude]
   items:
     - component: keyword-detector.sh
       event: UserPromptSubmit
@@ -50,7 +49,6 @@ hooks:
       timeout: 30
 
 skills:
-  platforms: [claude]
   items:
     - component: spec
       platforms: [claude]

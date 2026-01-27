@@ -26,7 +26,6 @@ scripts:
     - hud.js
 
 hooks:
-  platforms: [claude]
   items:
     # Common hooks
     - component: keyword-detector.sh
@@ -57,7 +56,6 @@ hooks:
       command: "#!/bin/bash\ninput=$(cat)\n./gradlew ktlintFormat -q 2>/dev/null || true\necho \"$input\""
 
 skills:
-  platforms: [claude]
   items:
     - component: spec
       platforms: [claude]

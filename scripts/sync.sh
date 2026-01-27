@@ -28,16 +28,17 @@ CURRENT_BACKUP_SESSION=""
 # 현재 프로젝트 이름 (process_yaml에서 설정, 루트면 빈 문자열)
 CURRENT_PROJECT_NAME=""
 
-# Global variable for get_item_component
+# Global variables for get_item_info
 ITEM_IS_OBJECT=false
+ITEM_COMPONENT=""
 
 # =============================================================================
 # Item Component Helper
 # =============================================================================
 
 # Get item from items array - handles both string and object format
-# Returns component name, sets ITEM_IS_OBJECT=true if object, false if string
-get_item_component() {
+# Sets global variables: ITEM_COMPONENT, ITEM_IS_OBJECT
+get_item_info() {
     local yaml_file="$1"
     local section="$2"
     local index="$3"
@@ -45,10 +46,10 @@ get_item_component() {
     local item_type=$(yq ".$section.items[$index] | type" "$yaml_file")
     if [[ "$item_type" == "!!str" ]]; then
         ITEM_IS_OBJECT=false
-        yq ".$section.items[$index]" "$yaml_file"
+        ITEM_COMPONENT=$(yq ".$section.items[$index]" "$yaml_file")
     else
         ITEM_IS_OBJECT=true
-        yq ".$section.items[$index].component // \"\"" "$yaml_file"
+        ITEM_COMPONENT=$(yq ".$section.items[$index].component // \"\"" "$yaml_file")
     fi
 }
 
@@ -103,8 +104,8 @@ sync_agents() {
     log_info "Agents 동기화 시작 ($count 개)"
 
     for i in $(seq 0 $((count - 1))); do
-        local component
-        component=$(get_item_component "$yaml_file" "agents" "$i")
+        get_item_info "$yaml_file" "agents" "$i"
+        local component="$ITEM_COMPONENT"
 
         # Get add-skills (only for object items)
         local add_skills=""
@@ -225,8 +226,8 @@ sync_commands() {
     log_info "Commands 동기화 시작 ($count 개)"
 
     for i in $(seq 0 $((count - 1))); do
-        local component
-        component=$(get_item_component "$yaml_file" "commands" "$i")
+        get_item_info "$yaml_file" "commands" "$i"
+        local component="$ITEM_COMPONENT"
 
         local item_platforms
         if [[ "$ITEM_IS_OBJECT" == "true" ]]; then
@@ -550,8 +551,8 @@ sync_skills() {
     log_info "Skills 동기화 시작 ($count 개)"
 
     for i in $(seq 0 $((count - 1))); do
-        local component
-        component=$(get_item_component "$yaml_file" "skills" "$i")
+        get_item_info "$yaml_file" "skills" "$i"
+        local component="$ITEM_COMPONENT"
 
         local item_platforms
         if [[ "$ITEM_IS_OBJECT" == "true" ]]; then
@@ -586,14 +587,16 @@ sync_skills() {
                     ;;
                 gemini)
                     if [[ "$prepared_gemini" == false && "$DRY_RUN" != true ]]; then
-                        mkdir -p "$target_path/.gemini"
+                        rm -rf "$target_path/.gemini/skills"
+                        mkdir -p "$target_path/.gemini/skills"
                         prepared_gemini=true
                     fi
                     gemini_sync_skills_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
                     ;;
                 codex)
                     if [[ "$prepared_codex" == false && "$DRY_RUN" != true ]]; then
-                        mkdir -p "$target_path/.codex"
+                        rm -rf "$target_path/.codex/skills"
+                        mkdir -p "$target_path/.codex/skills"
                         prepared_codex=true
                     fi
                     codex_sync_skills_direct "$target_path" "$SCOPED_DISPLAY_NAME" "$SCOPED_SOURCE_PATH" "$DRY_RUN"
@@ -655,8 +658,8 @@ sync_scripts() {
     log_info "Scripts 동기화 시작 ($count 개)"
 
     for i in $(seq 0 $((count - 1))); do
-        local component
-        component=$(get_item_component "$yaml_file" "scripts" "$i")
+        get_item_info "$yaml_file" "scripts" "$i"
+        local component="$ITEM_COMPONENT"
 
         local item_platforms
         if [[ "$ITEM_IS_OBJECT" == "true" ]]; then
