@@ -3,7 +3,7 @@
 
 # Global default platforms (sync.yaml can override at any level)
 # Priority: component-level > section-level > sync.yaml top-level > use-platforms > hardcoded [claude]
-use-platforms: [claude]
+use-platforms: [claude, gemini, codex]
 
 # Backup retention settings
 backup_retention_days: 3
