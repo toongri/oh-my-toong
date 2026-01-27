@@ -22,6 +22,141 @@ Like the Greek Titans who each governed specific domains, each skill and agent i
 - **Project overrides** - Per-project skill customization without modifying core skills
 - **Sync system** - Declarative synchronization to Claude Code configuration
 
+## Philosophy
+
+### Why oh-my-toong?
+
+Claude Code's plugin system is still evolving, making it challenging to inject custom skills and workflows directly. oh-my-toong takes a different approach: **building a structured agentic development framework from the ground up**, drawing inspiration from established projects while creating patterns tailored for AI-assisted development.
+
+### Agentic Development
+
+oh-my-toong embraces **Agentic Development** - a paradigm where AI agents collaborate through clearly defined roles rather than a single agent doing everything:
+
+| Role | Agent | Responsibility |
+|------|-------|----------------|
+| Design | spec | Creates comprehensive specifications before code |
+| Planning | prometheus | Transforms requirements into executable work plans |
+| Execution | sisyphus | Orchestrates implementation via specialized agents |
+| Implementation | sisyphus-junior | Writes code (delegated by sisyphus) |
+| Verification | code-reviewer | Validates all implementations |
+
+**The Core Principle**: Separation of concerns prevents premature implementation and ensures quality through mandatory verification.
+
+## Core Skills Architecture
+
+The three foundational skills form a **Design -> Plan -> Execute** pipeline:
+
+```mermaid
+flowchart LR
+    subgraph Design
+        spec["/spec"]
+    end
+    subgraph Planning
+        prometheus["/prometheus"]
+    end
+    subgraph Execution
+        sisyphus["/sisyphus"]
+    end
+
+    spec -->|".omt/specs/*.md"| prometheus
+    prometheus -->|".omt/plans/*.md"| sisyphus
+    sisyphus -->|"verified code"| Done((Done))
+```
+
+### spec - Software Specification Expert
+
+**Purpose**: Prevent implementation of poorly-defined requirements by creating comprehensive, testable specifications.
+
+**Core Constraint**: No phase completion without user confirmation. All acceptance criteria must be testable.
+
+```mermaid
+flowchart TB
+    Start([User Request]) --> Phase[Phase Selection]
+    Phase --> Step[Execute Step]
+    Step --> Save[Save to .omt/specs/]
+    Save --> Review{spec-reviewer<br/>feedback needed?}
+    Review -->|No| Next{More steps?}
+    Review -->|Yes| Feedback[Receive Multi-AI Feedback]
+    Feedback --> Present[Present to User]
+    Present --> Decision{User Decision}
+    Decision -->|Incorporate| Step
+    Decision -->|Skip| Next
+    Decision -->|Another round| Feedback
+    Next -->|Yes| Step
+    Next -->|No| Complete([Spec Complete])
+```
+
+**Key Phases**:
+1. Requirements - Clarify ambiguous requirements
+2. Architecture - System structure changes
+3. Domain - State machines, business rules
+4. Detailed - Performance, concurrency
+5. API - External API exposure
+
+### prometheus - Strategic Planning Consultant
+
+**Purpose**: Separate planning from execution. Create work plans before any code is written.
+
+**Core Constraint**: **NEVER writes code**. Interprets ALL requests as planning requests.
+
+```mermaid
+flowchart TB
+    Start([User Request]) --> Interpret[Interpret as<br/>'Create plan to X']
+    Interpret --> Interview[Interview Mode]
+    Interview --> Research[Research via<br/>explore/librarian]
+    Research --> More{More<br/>questions?}
+    More -->|Yes| Interview
+    More -->|No| Criteria{User provided<br/>acceptance criteria?}
+    Criteria -->|Yes| Metis[Consult metis]
+    Criteria -->|No| Draft[Draft criteria<br/>-> User confirms]
+    Draft --> Metis
+    Metis --> Write[Write plan to<br/>.omt/plans/*.md]
+    Write --> Handoff([Handoff to /sisyphus])
+```
+
+**Forbidden Actions**:
+- Writing code files (.ts, .js, .py, etc.)
+- Editing source code
+- Running implementation commands
+- ANY action that "does the work"
+
+### sisyphus - Task Orchestrator
+
+**Purpose**: Orchestrate complex tasks through delegation, never solo execution.
+
+**Core Constraint**: **ORCHESTRATE. DELEGATE. NEVER SOLO.** 2+ files OR complex analysis = DELEGATE.
+
+```mermaid
+flowchart TB
+    Start([User Request]) --> Classify{Request Type?}
+    Classify -->|Trivial| Direct[Direct tools]
+    Classify -->|Explicit| Execute[Execute directly]
+    Classify -->|Exploratory| Explore[Fire explore agent]
+    Classify -->|Open-ended| Interview[In-Depth Interview]
+
+    Interview --> Tasks[Create Task List]
+    Explore --> Tasks
+
+    Tasks --> Loop{Unblocked<br/>tasks?}
+    Loop -->|No| Done([Done])
+    Loop -->|Yes| Delegate[Delegate to<br/>sisyphus-junior]
+    Delegate --> Ignore[IGNORE 'done' claim]
+    Ignore --> Review[Invoke code-reviewer]
+    Review --> Pass{Pass?}
+    Pass -->|Yes| Complete[Mark completed]
+    Pass -->|No| Fix[Create fix task]
+    Fix --> Delegate
+    Complete --> Loop
+```
+
+**Verification Protocol**:
+- **Zero Trust**: sisyphus-junior's "done" claims are ALWAYS ignored
+- **Mandatory Review**: code-reviewer invoked after EVERY implementation
+- **No Retry Limit**: Continue until code-reviewer passes
+- **Persistence**: User cannot stop the process prematurely
+
+> 📖 **Detailed Guide**: See the [Orchestration Guide](docs/ORCHESTRATION.en.md) for complete workflows and usage instructions.
+
 ## Directory Structure
 
 ```

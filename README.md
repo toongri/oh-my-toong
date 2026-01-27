@@ -22,6 +22,141 @@ oh-my-toong은 Claude Code의 스킬과 에이전트 설정을 담은 저장소�
 - **프로젝트 오버라이드** - 핵심 스킬을 수정하지 않고 프로젝트별 스킬 커스터마이징
 - **동기화 시스템** - Claude Code 설정으로의 선언적 동기화
 
+## 철학
+
+### oh-my-toong을 만든 이유
+
+Claude Code의 플러그인 시스템은 아직 발전 중이라, 커스텀 스킬과 워크플로우를 직접 주입하기 어렵습니다. oh-my-toong은 다른 접근 방식을 취합니다: 기존의 좋은 프로젝트들을 참고하면서 **AI 지원 개발에 특화된 에이전틱 개발 프레임워크를 직접 구축**합니다.
+
+### 에이전틱 개발 (Agentic Development)
+
+oh-my-toong은 **에이전틱 개발**을 지향합니다. 하나의 AI가 모든 것을 처리하는 대신, 명확한 역할을 가진 에이전트들이 협업합니다:
+
+| 역할 | 에이전트 | 책임 |
+|------|----------|------|
+| 설계 | spec | 코드 작성 전 종합적인 명세 작성 |
+| 기획 | prometheus | 요구사항을 실행 가능한 작업 계획으로 변환 |
+| 실행 | sisyphus | 전문 에이전트를 통한 구현 조율 |
+| 구현 | sisyphus-junior | 코드 작성 (sisyphus가 위임) |
+| 검증 | code-reviewer | 모든 구현 검증 |
+
+**핵심 원칙**: 관심사 분리를 통해 성급한 구현을 방지하고, 필수 검증을 통해 품질을 보장합니다.
+
+## 핵심 스킬 아키텍처
+
+세 가지 기반 스킬이 **설계 -> 기획 -> 실행** 파이프라인을 형성합니다:
+
+```mermaid
+flowchart LR
+    subgraph 설계
+        spec["spec"]
+    end
+    subgraph 기획
+        prometheus["prometheus"]
+    end
+    subgraph 실행
+        sisyphus["sisyphus"]
+    end
+
+    spec -->|".omt/specs/*.md"| prometheus
+    prometheus -->|".omt/plans/*.md"| sisyphus
+    sisyphus -->|"검증된 코드"| Done((완료))
+```
+
+### spec - 소프트웨어 명세 전문가
+
+**목적**: 불명확한 요구사항의 구현을 방지하고, 포괄적이고 테스트 가능한 명세를 작성합니다.
+
+**핵심 제약**: 사용자 확인 없이 단계를 완료할 수 없습니다. 모든 인수 기준은 테스트 가능해야 합니다.
+
+```mermaid
+flowchart TB
+    Start([사용자 요청]) --> Phase[단계 선택]
+    Phase --> Step[단계 실행]
+    Step --> Save[.omt/specs/에 저장]
+    Save --> Review{spec-reviewer<br/>피드백 필요?}
+    Review -->|아니오| Next{다음 단계?}
+    Review -->|예| Feedback[Multi-AI 피드백 수신]
+    Feedback --> Present[사용자에게 제시]
+    Present --> Decision{사용자 결정}
+    Decision -->|반영| Step
+    Decision -->|건너뛰기| Next
+    Decision -->|재검토| Feedback
+    Next -->|예| Step
+    Next -->|아니오| Complete([명세 완료])
+```
+
+**핵심 단계**:
+1. 요구사항 - 모호한 요구사항 명확화
+2. 아키텍처 - 시스템 구조 변경
+3. 도메인 - 상태 머신, 비즈니스 규칙
+4. 상세 - 성능, 동시성
+5. API - 외부 API 노출
+
+### prometheus - 전략적 기획 컨설턴트
+
+**목적**: 기획과 실행을 분리합니다. 코드 작성 전에 작업 계획을 수립합니다.
+
+**핵심 제약**: **절대 코드를 작성하지 않습니다**. 모든 요청을 기획 요청으로 해석합니다.
+
+```mermaid
+flowchart TB
+    Start([사용자 요청]) --> Interpret['X 계획 수립'으로<br/>해석]
+    Interpret --> Interview[인터뷰 모드]
+    Interview --> Research[explore/librarian으로<br/>조사]
+    Research --> More{추가<br/>질문?}
+    More -->|예| Interview
+    More -->|아니오| Criteria{사용자가 인수<br/>기준 제공?}
+    Criteria -->|예| Metis[metis 상담]
+    Criteria -->|아니오| Draft[기준 초안<br/>-> 사용자 확인]
+    Draft --> Metis
+    Metis --> Write[.omt/plans/*.md에<br/>계획 작성]
+    Write --> Handoff([/sisyphus로 전달])
+```
+
+**금지된 행위**:
+- 코드 파일 작성 (.ts, .js, .py 등)
+- 소스 코드 편집
+- 구현 명령 실행
+- "작업을 수행하는" 모든 행위
+
+### sisyphus - 태스크 오케스트레이터
+
+**목적**: 복잡한 작업을 위임을 통해 조율합니다. 단독 실행하지 않습니다.
+
+**핵심 제약**: **조율한다. 위임한다. 단독 작업 안 함.** 2개 이상 파일 OR 복잡한 분석 = 위임.
+
+```mermaid
+flowchart TB
+    Start([사용자 요청]) --> Classify{요청 유형?}
+    Classify -->|단순| Direct[직접 도구 사용]
+    Classify -->|명시적| Execute[직접 실행]
+    Classify -->|탐색적| Explore[explore 에이전트 실행]
+    Classify -->|개방형| Interview[심층 인터뷰]
+
+    Interview --> Tasks[태스크 목록 생성]
+    Explore --> Tasks
+
+    Tasks --> Loop{대기 중인<br/>태스크?}
+    Loop -->|아니오| Done([완료])
+    Loop -->|예| Delegate[sisyphus-junior에<br/>위임]
+    Delegate --> Ignore['완료' 주장 무시]
+    Ignore --> Review[code-reviewer 호출]
+    Review --> Pass{통과?}
+    Pass -->|예| Complete[완료 처리]
+    Pass -->|아니오| Fix[수정 태스크 생성]
+    Fix --> Delegate
+    Complete --> Loop
+```
+
+**검증 프로토콜**:
+- **제로 트러스트**: sisyphus-junior의 "완료" 주장은 항상 무시
+- **필수 리뷰**: 모든 구현 후 code-reviewer 호출
+- **재시도 제한 없음**: code-reviewer가 통과할 때까지 계속
+- **지속성**: 사용자가 프로세스를 중단할 수 없음
+
+> 📖 **상세 가이드**: [오케스트레이션 가이드](docs/ORCHESTRATION.md)에서 전체 워크플로우와 사용법을 확인하세요.
+
 ## 디렉토리 구조
 
 ```
