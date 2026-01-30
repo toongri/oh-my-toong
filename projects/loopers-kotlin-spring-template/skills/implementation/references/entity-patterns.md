@@ -86,10 +86,17 @@ data class Money(
 
 Validate in `init` block or factory, never create invalid objects.
 
+**모든 검증에 CoreException 사용** (`require()` 금지)
+
+이유:
+- 일관된 에러 응답 포맷
+- 클라이언트에게 의미 있는 에러 코드 전달
+- 로깅 및 모니터링 일관성
+
 ```kotlin
 init {
     if (!totalAmount.isPositive()) {
-        throw CoreException(ErrorType.BAD_REQUEST, "총 금액은 양수여야 합니다.")
+        throw CoreException(ErrorType.BAD_REQUEST, "[totalAmount = $totalAmount] 총 금액은 양수여야 합니다.")
     }
 }
 

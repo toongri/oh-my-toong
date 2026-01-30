@@ -41,7 +41,7 @@ fun findById(id: Long): Entity {
     return repository.findById(id)
         ?: throw CoreException(
             errorType = ErrorType.NOT_FOUND,
-            customMessage = "[id = $id] Entity not found."
+            customMessage = "[id = $id] 엔티티를 찾을 수 없습니다."
         )
 }
 ```
@@ -53,7 +53,7 @@ fun use(amount: Long) {
     if (balance < amount) {
         throw CoreException(
             errorType = ErrorType.INSUFFICIENT_BALANCE,
-            customMessage = "[pointId = $id] Insufficient balance. required=$amount, available=$balance"
+            customMessage = "[pointId = $id] 잔액이 부족합니다. 필요=$amount, 보유=$balance"
         )
     }
 }
@@ -66,7 +66,7 @@ fun expire() {
     if (status != PointStatus.ACTIVE) {
         throw CoreException(
             errorType = ErrorType.BAD_REQUEST,
-            customMessage = "[pointId = $id] Cannot expire in current state. currentStatus=$status"
+            customMessage = "[pointId = $id] 현재 상태에서 만료할 수 없습니다. 현재상태=$status"
         )
     }
     status = PointStatus.EXPIRED
@@ -80,7 +80,7 @@ fun validateUnique(code: String) {
     if (repository.existsByCode(code)) {
         throw CoreException(
             errorType = ErrorType.CONFLICT,
-            customMessage = "[code = $code] Code already exists."
+            customMessage = "[code = $code] 이미 존재하는 코드입니다."
         )
     }
 }
@@ -91,13 +91,13 @@ fun validateUnique(code: String) {
 ### Context Prefix Pattern
 
 ```
-[field = $value] Description
+[field = $value] 설명
 ```
 
 **Examples:**
-- `[couponId = 123] Coupon not found.`
-- `[userId = 456, orderId = 789] No permission for this order.`
-- `[pointId = 1] Insufficient balance. required=1000, available=500`
+- `[couponId = 123] 쿠폰을 찾을 수 없습니다.`
+- `[userId = 456, orderId = 789] 해당 주문에 대한 권한이 없습니다.`
+- `[pointId = 1] 잔액이 부족합니다. 필요=1000, 보유=500`
 
 ### Message Writing Principles
 

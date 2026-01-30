@@ -53,8 +53,12 @@ data class ProductPageQuery(
     val categoryId: Long? = null,
 ) {
     init {
-        require(page >= 0) { "[page = $page] 페이지는 0 이상이어야 합니다." }
-        require(size in 1..100) { "[size = $size] 페이지 크기는 1~100이어야 합니다." }
+        if (page < 0) {
+            throw CoreException(ErrorType.BAD_REQUEST, "[page = $page] 페이지는 0 이상이어야 합니다.")
+        }
+        if (size !in 1..100) {
+            throw CoreException(ErrorType.BAD_REQUEST, "[size = $size] 페이지 크기는 1~100이어야 합니다.")
+        }
     }
 
     companion object {
