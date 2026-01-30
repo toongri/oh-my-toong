@@ -87,6 +87,16 @@ digraph {
 | "It's urgent/EOD/ASAP" | Urgency = higher cost of rework. Clarify FASTER, not less. |
 | "I'll propose and they can correct" | Corrections after implementation cost 10x more than upfront questions. |
 
+### User Deferral Handling
+
+When user explicitly defers ("skip", "I don't know", "your call", "you decide", "no preference"):
+1. Gather context autonomously via explore/oracle
+2. Select best practice based on codebase patterns or industry standards
+3. Document assumption: "Autonomous decision: [X] - user deferred, based on [rationale]"
+4. Proceed without blocking
+
+When user has no preference or cannot decide, select best practice autonomously. Quality is the priority—achieve it through proactive context gathering, not user interrogation.
+
 ## Protocol
 
 ### 1. Capture & Analyze
@@ -205,4 +215,4 @@ Offer to save to `requirements/` if substantial.
 3. **Minimal questions** - Only what's needed
 4. **Respect answers** - Accept decisions
 5. **Show transformation** - Always before/after
-6. **Interview persistence** - Continue until YOU have no questions left. Not after 2-3 questions. Not when user seems tired. Keep clarifying until every ambiguity is resolved.
+6. **Interview persistence** - Continue until YOU have no questions left. Not after 2-3 questions. Keep clarifying until every ambiguity is resolved. **Deferral fallback**: If user defers a decision, gather context autonomously (explore/oracle), document your autonomous choice with rationale, and proceed.
